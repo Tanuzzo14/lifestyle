@@ -247,6 +247,85 @@ const proApp = {
       </div>
     </div>`;
   },
+  openAddClientModal(){ const m = document.getElementById('add-client-modal'); if (m){ m.classList.remove('hidden'); m.classList.add('flex'); } },
+  closeAddClientModal(){ const m = document.getElementById('add-client-modal'); if (m){ m.classList.add('hidden'); m.classList.remove('flex'); } },
+
+  async addClient(username, password) {
+    if (!this.user) return alert("Errore: professionista non autenticato.");
+    const proUid = this.user.uid;
+    const userKey = String(username || '').trim().toLowerCase();
+    if (!userKey) return alert("Inserisci un nome utente valido.");
+    const newClientUsername = userKey.toUpperCase();
+    const clientId = 'client_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+    const fakeEmail = `${userKey}@lifestyledesigner.app`;
+
+    try {
+      // 1) crea documento "utente" su Firestore (solo DB)
+      const userRef = this.getUserDocRef(clientId);
+      await setDoc(userRef, {
+        userType: "user",
+        displayUsername: newClientUsername,
+        fakeEmail: fakeEmail,
+        passwordHint: String(password || ''),
+        data: {
+          habits: [],
+          workout: [],
+          uploadedWorkoutPlans: [],
+          diet: [],
+          dietPlan: { targetCalories: 2000, plan: [] },
+          uploadedDietPlans: [],
+          dailyCompliance: {},
+          measurementsLog: []
+        },
+        sleepStartTimestamp: null,
+        createdBy: proUid,
+        createdAt: new Date().toISOString()
+      });
+
+      // 2) associa l'utente alla lista clients del professionista (arrayUnion)
+      const proRef = this.getUserDocRef(proUid);
+      await updateDoc(proRef, {
+        clients: arrayUnion({ uid: clientId, username: newClientUsername })
+      });
+
+      // 3) ricarica e mostra
+      await this.loadClientsData();
+      this.render();
+      this.closeAddClientModal();
+      alert(`Utente '${newClientUsername}' creato e associato con successo!`);
+    } catch (err) {
+      // Messaggio dettagliato in console + alert leggibile
+      console.error("Errore creazione utente:", { code: err?.code, message: err?.message, stack: err?.stack, raw: err });
+      alert("Errore durante la creazione dell'utente.\nCodice: " + (err?.code || 'N/A') + "\nMessaggio: " + (err?.message || String(err)));
+    }
+  },
+
+  async removeClient(uid) {
+    if (!confirm("Sei sicuro di voler rimuovere questo utente?")) return;
+    this.data.clients = (this.data.clients || []).filter(c => c.uid !== uid);
+    delete this.clientsData[uid];
+    try {
+      await setDoc(this.getUserDocRef(this.user.uid), { clients: this.data.clients }, { merge: true });
+      this.render();
+      alert("Utente rimosso dalla tua lista.");
+    } catch (err) {
+      console.error("Errore removeClient:", err);
+      alert("Errore durante la rimozione: " + (err?.message || err));
+    }
+  },
+
+  openEditClientModal(uid) {
+    const clientData = this.clientsData[uid];
+    if (!clientData) return alert("Dati del cliente non trovati.");
+    this.editingClient = uid;
+    document.getElementById('edit-client-title').textContent = `Modifica dati per: ${clientData.displayUsername}`;
+    document.getElementById('edit-json-area').value = JSON.stringify(clientData, null, 2);
+    const modal = document.getElementById('edit-client-modal');
+    modal.classList.remove('hidden'); modal.classList.add('flex');
+  },
+
+  closeEditClientModal(){ const m = document.getElementById('edit-client-modal'); if (m){ m.classList.add('hidden'); m.classList.remove('flex'); } this.editingClient = null; },
+
 
   // Nuova funzione per cambiare scheda
   setClientView(view) {
