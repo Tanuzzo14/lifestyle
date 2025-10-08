@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Professionista</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+    body { font-family: 'Inter', sans-serif; }
+    .client-table th, .client-table td { padding: 1rem 1.5rem; }
+    .client-table th { border-bottom: 2px solid #e5e7eb; }
+    .client-card { transition: transform 0.2s, box-shadow 0.2s; }
+    .client-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); }
+    .tab-button.active { border-bottom: 3px solid #4f46e5; color: #4f46e5; font-weight: 600; }
+</style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen">
+<div id="app" class="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+  <div id="loading-indicator" class="text-center py-10 bg-white rounded-xl shadow">
+    <svg class="animate-spin h-8 w-8 text-indigo-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <p class="mt-4 text-gray-600">Caricamento dashboard...</p>
+  </div>
+</div>
+
+<div id="error-modal" class="fixed inset-0 bg-red-800 bg-opacity-75 hidden items-center justify-center z-[100]">
+  <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
+    <h3 class="text-xl font-bold mb-4 text-red-600">Errore Critico</h3>
+    <p id="error-message" class="mb-4 text-gray-700">Si è verificato un errore.</p>
+    <button onclick="window.location.href='index.html'" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">Torna al Login</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+
+/* ---------- FALLBACK CONFIG (comodo per test locali) ---------- */
+const defaultConfig = {
+  apiKey: "AIzaSyDDi0OXyc3Fn9bVnR8xobyu3Qf61qBJEVE",
+  authDomain: "lifestyle-fac1d.firebaseapp.com",
+  projectId: "lifestyle-fac1d",
+  storageBucket: "lifestyle-fac1d.firebasestorage.app",
+  messagingSenderId: "49251122953",
+  appId: "1:49251122953:web:00eb812d9ee00503539dd8",
+  measurementId: "G-H8HSFCF8HM"
+};
+const firebaseConfig = JSON.parse(localStorage.getItem('__firebase_config') || JSON.stringify(defaultConfig));
+/* -------------------------------------------------------------- */
+
+const proApp = {
+  user: null,
+  data: {},
+  clientsData: {},
+  editingClient: null,
+  currentClientView: 'workout', // Nuova variabile per la scheda del modale
+
+  showError(message) {
+    const loading = document.getElementById('loading-indicator');
+    if (loading) loading.classList.add('hidden');
+    const em = document.getElementById('error-message');
+    if (em) em.textContent = message;
+    const m = document.getElementById('error-modal');
+    if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+    console.error('Errore Critico:', message);
+  },
+
+  async init() {
+    try {
+      const app = initializeApp(firebaseConfig);
+      this.auth = getAuth(app);
+      this.db = getFirestore(app);
+      this.getUserDocRef = (uid) => doc(this.db, "users", uid);
+      await this.setupAuth();
+    } catch (e) {
+      this.showError("Errore inizializzazione Firebase: " + (e.message || e));
+      console.error(e);
+    }
+  },
+
+  async setupAuth() {
+    onAuthStateChanged(this.auth, async (user) => {
+      const loadingIndicator = document.getElementById('loading-indicator');
+      if (loadingIndicator) loadingIndicator.classList.add('hidden');
+
+      if (!user) {
+        this.showError("Sessione scaduta. Effettua nuovamente il login.");
+        return;
+      }
+      this.user = user;
+      await this.initDashboard();
+    });
+  },
+
+  async initDashboard() {
+    if (!this.user) return;
+    try {
+      const snap = await getDoc(this.getUserDocRef(this.user.uid));
+      if (!snap.exists() || snap.data().userType !== "pro") {
+        this.showError("Accesso non autorizzato. Il tuo account non è un account professionista.");
+        await signOut(this.auth);
+        return;
+      }
+      this.data = snap.data();
+      await this.loadClientsData();
+      this.render();
+    } catch (err) {
+      console.error("Errore initDashboard:", err);
+      this.showError("Errore caricamento dati: " + (err.message || err));
+    }
+  },
+
+  async loadClientsData() {
+    this.clientsData = {};
+    const clients = this.data.clients || [];
+    for (const client of clients) {
+      try {
+        const snap = await getDoc(this.getUserDocRef(client.uid));
+        // Aggiungo anche l'UID nella copia dei dati per comodità nel modale
+        if (snap.exists()) this.clientsData[client.uid] = { ...snap.data(), uid: client.uid };
+      } catch (e) {
+        console.error(`Impossibile caricare i dati per il cliente ${client.uid}:`, e);
+      }
+    }
+  },
+
+  getLastDate(arr) {
+    if (!arr) return '—';
+    if (Array.isArray(arr) && arr.length === 0) return '—';
+    if (Array.isArray(arr)) {
+      const last = arr[arr.length - 1];
+      return last?.date || last?.day || 'N/D';
+    }
+    return '—';
+  },
+
+  render() {
+  const clientsCount = (this.data.clients || []).length;
+  const displayName = this.data.displayUsername || this.user.displayName || this.user.email || "Professionista";
+
+  document.getElementById('app').innerHTML = `
+    <header class="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+      <div>
+        <h1 class="text-4xl font-extrabold text-gray-900">
+          Dashboard Professionista
+        </h1>
+        <p class="text-lg text-gray-600 mt-1">
+          Benvenuto <span class="font-semibold text-indigo-600">${displayName}</span>
+        </p>
+      </div>
+      <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 mt-4 sm:mt-0">
+        <button onclick="proApp.openAddClientModal()" 
+          class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-2 rounded-lg shadow-md transition duration-150">
+          + Nuovo Utente
+        </button>
+        <button onclick="proApp.signOut()" 
+          class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-6 py-2 rounded-lg transition duration-150">
+          Logout
+        </button>
+      </div>
+    </header>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-indigo-500">
+        <p class="text-sm font-medium text-gray-500">Totale Utenti Gestiti</p>
+        <p class="text-3xl font-bold text-gray-900 mt-1">${clientsCount}</p>
+      </div>
+    </div>
+    
+    <div id="client-list-container" class="bg-white shadow-xl rounded-xl">
+      <div class="p-6 border-b border-gray-100">
+          <h2 class="text-2xl font-semibold text-gray-800">Elenco Utenti</h2>
+      </div>
+      ${this.renderClientList()}
+    </div>
+    ${this.renderAddClientModal()}
+    ${this.renderEditClientModal()}
+  `;
+},
+
+  renderClientList() {
+    const clients = this.data.clients || [];
+    if (!clients.length) return '<p class="text-gray-500 italic p-6">Ancora nessun utente registrato. Clicca "Nuovo Utente" per iniziare.</p>';
+    return `<div class="p-4 grid grid-cols-1 gap-4">
+      ${clients.map(c => {
+        const cd = this.clientsData[c.uid] || {};
+        return `
+          <div class="client-card bg-white border border-gray-100 rounded-lg shadow-sm p-4 flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div class="flex-grow">
+              <p class="text-lg font-semibold text-gray-800">${c.username}</p>
+              <p class="text-sm text-gray-500">ID Utente: ${c.uid}</p>
+              <ul class="text-xs text-gray-600 mt-1">
+                <li>Ultima Misurazione: ${this.getLastDate(cd?.data?.measurementsLog)}</li>
+                <li>Ultimo Allenamento: ${this.getLastDate(cd?.data?.workout)}</li>
+                <li>Ultima Dieta: ${this.getLastDate(cd?.data?.dietPlan?.plan)}</li>
+              </ul>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-3 md:mt-0 md:ml-4">
+              <button onclick="proApp.openEditClientModal('${c.uid}')" class="text-indigo-600 border border-indigo-600 px-3 py-1 text-sm rounded-lg">Gestisci Dati</button>
+              <button onclick="proApp.removeClient('${c.uid}')" class="bg-red-500 text-white px-3 py-1 text-sm rounded-lg">Rimuovi</button>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>`;
+  },
+
+  renderAddClientModal() {
+    return `<div id="add-client-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+        <h3 class="text-2xl font-bold mb-5">Crea Nuovo Utente</h3>
+        <form onsubmit="event.preventDefault(); proApp.addClient(this.username.value, this.password.value);">
+          <input name="username" type="text" placeholder="Nome Utente (es. MARIO_ROSSI)" class="mb-3 w-full p-3 border rounded-lg" required>
+          <input name="password" type="password" placeholder="Password (min. 6 caratteri)" class="mb-6 w-full p-3 border rounded-lg" required minlength="6">
+          <div class="flex justify-end space-x-3">
+            <button type="button" onclick="proApp.closeAddClientModal()" class="bg-gray-200 px-5 py-2 rounded-lg">Annulla</button>
+            <button type="submit" class="bg-green-600 text-white px-5 py-2 rounded-lg">Crea Account</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+  },
+
+  /* MODIFICA IL MODALE DI EDITING: ORA È UN MODALE MULTI-SCHEDA */
+  renderEditClientModal() {
+    return `<div id="edit-client-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-5xl max-h-[95vh] flex flex-col">
+        <h3 id="edit-client-title" class="text-2xl font-bold mb-2 text-gray-800">Gestione Dati Cliente</h3>
+        <p class="text-sm text-gray-500 mb-5 border-b pb-3">Modifica i dati di allenamento, dieta o misure.</p>
+        
+        <div class="flex border-b border-gray-200 mb-4">
+            <button onclick="proApp.setClientView('workout')" class="tab-button p-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentClientView === 'workout' || this.currentClientView === 'workoutImport' ? 'active' : ''}">Allenamento</button>
+            <button onclick="proApp.setClientView('diet')" class="tab-button p-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentClientView === 'diet' || this.currentClientView === 'dietImport' ? 'active' : ''}">Dieta</button>
+            <button onclick="proApp.setClientView('measurements')" class="tab-button p-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentClientView === 'measurements' ? 'active' : ''}">Misure</button>
+            <button onclick="proApp.setClientView('advanced')" class="tab-button p-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentClientView === 'advanced' ? 'active' : ''}">Avanzate (JSON)</button>
+        </div>
+
+        <div id="edit-client-content" class="flex-grow overflow-y-auto">
+          </div>
+
+        <div class="flex justify-end mt-4 pt-4 border-t">
+          <button type="button" onclick="proApp.closeEditClientModal()" class="bg-gray-200 hover:bg-gray-300 px-5 py-2 rounded-lg text-gray-800">Chiudi</button>
+        </div>
+      </div>
+    </div>`;
+  },
+
+  // Nuova funzione per cambiare scheda
+  setClientView(view) {
+      this.currentClientView = view;
+      // Rirenderizza l'interno del modale per mostrare la nuova scheda
+      const modal = document.getElementById('edit-client-modal');
+      if (modal && !modal.classList.contains('hidden')) {
+          this.openEditClientModal(this.editingClient, view);
+      }
+  },
+
+  // Funzione per generare il contenuto dinamico del modale
+  renderClientManagementContent(uid) {
+    const clientData = this.clientsData[uid] || {};
+    const clientState = clientData.data || {};
+    
+    // Funzioni helper fittizie per le dashboard
+    const getTodayDateString = () => new Date().toISOString().slice(0, 10);
+    
+    // ----------- Allenamento Dashboard (Simplified) -----------
+    const renderWorkoutDashboard = () => {
+        const today = getTodayDateString();
+        const complianceToday = clientState.dailyCompliance[today] || { workout:false };
+        const isCompleted = complianceToday.workout;
+        
+
+        const workoutsByDay = (clientState.workout || []).reduce((acc, w) => {
+            if (!acc[w.day]) acc[w.day] = [];
+            acc[w.day].push(w);
+            return acc;
+        }, {});
+
+        const workoutDaysHTML = Object.keys(workoutsByDay).sort().map(day => {
+            const exercisesHTML = workoutsByDay[day].map((w, index) => {
+                return `<li class="py-2 border-b last:border-b-0 text-sm">
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold">${w.exercise?.toUpperCase() || 'N/D'}</span>
+                        <div class="flex space-x-2">
+                            <button onclick="alert('Funzione di modifica esercizio non implementata. Usa Avanzate (JSON).')" class="text-blue-500 hover:text-blue-700 transition">Modifica</button>
+                            <button onclick="alert('Funzione di rimozione esercizio non implementata. Usa Avanzate (JSON).')" class="text-red-500 hover:text-red-700 transition">Rimuovi</button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-600">GIORNO: ${w.day} | SERIE: ${w.sets} | REP: ${w.reps} | CARICO: ${w.load}</p>
+                </li>`;
+            }).join('');
+            return `<div class="mb-4"><h4 class="text-xl font-bold text-indigo-600">${day}</h4><ul class="space-y-1">${exercisesHTML}</ul></div>`;
+        }).join('');
+
+        return `<div class="p-4 space-y-6">
+            <h2 class="text-2xl font-bold text-indigo-600">PIANO DI ALLENAMENTO</h2>
+            <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                <h3 class="text-xl font-bold mb-4">ESERCIZI (${(clientState.workout || []).length})</h3>
+                <div class="space-y-4">${workoutDaysHTML || `<p class="text-gray-500 p-2">Nessun esercizio nel piano.</p>`}</div>
+                <button onclick="proApp.clearClientData('${uid}', 'workout')" class="mt-4 p-2 w-full text-sm bg-red-100 text-red-700 font-semibold rounded-lg hover:bg-red-200">CANCELLA TUTTO</button>
+            </div>
+            <h3 class="text-xl font-bold mb-4">AGGIUNGI ESERCIZIO</h3>
+            <form onsubmit="event.preventDefault(); proApp.addClientWorkout('${uid}', this.day.value, this.exercise.value, this.sets.value, this.reps.value, this.load.value); this.reset();" class="space-y-2 bg-white p-4 rounded-lg shadow">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" name="day" placeholder="GIORNO (ES. A, B)" required class="w-full p-3 border rounded-lg">
+                    <input type="text" name="exercise" placeholder="NOME ESERCIZIO" required class="w-full p-3 border rounded-lg">
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <input type="number" name="sets" placeholder="SERIE" class="w-full p-3 border rounded-lg">
+                    <input type="number" name="reps" placeholder="REP" class="w-full p-3 border rounded-lg">
+                    <input type="text" name="load" placeholder="CARICO (KG/N/D)" class="w-full p-3 border rounded-lg">
+                </div>
+                <button type="submit" class="w-full p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 mt-4">AGGIUNGI</button>
+            </form>
+            <div class="bg-white p-4 rounded-lg shadow mt-4">
+              <h3 class="text-xl font-bold mb-4">CARICA PIANO / FILE</h3>
+              <input type="file" onchange="proApp.uploadFile(event, '${uid}', 'workout')" accept=".pdf,.doc,.docx,.txt,.json" class="w-full p-3 border rounded-lg bg-white text-gray-700 text-sm">
+              <button onclick="proApp.setClientView('workoutImport')" class="mt-2 p-3 w-full bg-blue-100 text-blue-700 font-bold rounded-lg hover:bg-blue-200">INCOLLA TESTO / IMPORTA</button>
+            </div>
+        </div>`;
+    };
+    
+    // CORREZIONE QUI: Modificati i riferimenti a window.app con proApp e aggiunto l'UID
+    const renderWorkoutImport = () => {
+      const uid = proApp.editingClient;
+      return `<div class="card"><h2 class="text-2xl font-bold mb-4 text-blue-600">IMPORTA PIANO ALLENAMENTO</h2><p class="mb-4 text-gray-700 no-uppercase">Incolla il tuo piano di allenamento qui. Sono supportati i formati semplici (es. riga per riga), CSV (Giorno, Esercizio, Serie, Reps, Carico) o JSON array.</p><textarea id="workout-import-area" class="w-full p-4 border rounded-lg h-64 font-mono text-sm no-uppercase" placeholder="INCOLLA QUI IL TESTO DEL TUO PIANO..."></textarea><button onclick="proApp.importWorkoutPlan('${uid}', document.getElementById('workout-import-area').value)" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 mt-4">IMPORTA PIANO</button><button onclick="proApp.setClientView('workout')" class="w-full p-3 bg-gray-300 text-gray-800 font-bold rounded-lg hover:bg-gray-400 mt-2">ANNULLA</button></div>`;
+    };
+
+    // ----------- Dieta Dashboard (Simplified) -----------
+    const renderDietDashboard = () => {
+        const today = getTodayDateString();
+        const complianceToday = clientState.dailyCompliance[today] || { diet:false };
+        const isCompleted = complianceToday.diet;
+            
+
+        const dayLabels = ['LUNEDÌ','MARTEDÌ','MERCOLEDÌ','GIOVEDÌ','VENERDÌ','SABATO','DOMENICA'];
+        const dietPlanHTML = (clientState.dietPlan?.plan || []).sort((a, b) => dayLabels.indexOf(a.day) - dayLabels.indexOf(b.day)).map((dayPlan) => {
+            const mealsHTML = dayPlan.meals.map((meal) => {
+                return `<li class="py-2 border-b last:border-b-0 text-sm">
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold">${meal.category}: ${meal.description}</span>
+                        <div class="flex space-x-2">
+                            <button onclick="alert('Funzione di modifica pasto non implementata. Usa Avanzate (JSON).')" class="text-blue-500 hover:text-blue-700 transition">Modifica</button>
+                            <button onclick="alert('Funzione di rimozione pasto non implementata. Usa Avanzate (JSON).')" class="text-red-500 hover:text-red-700 transition">Rimuovi</button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-600">${meal.weight} (${meal.type}) | ${meal.calories} KCAL</p>
+                </li>`;
+            }).join('');
+            const totalDayCalories = dayPlan.meals.reduce((sum, m) => sum + m.calories, 0);
+            return `<div class="mb-4"><h4 class="text-xl font-bold text-indigo-600">${dayPlan.day} (${totalDayCalories} KCAL)</h4><ul class="space-y-1">${mealsHTML}</ul></div>`;
+        }).join('');
+
+        return `<div class="p-4 space-y-6">
+            <h2 class="text-2xl font-bold text-indigo-600">PIANO DIETA (${clientState.dietPlan?.targetCalories || 0} KCAL OBIETTIVO)</h2>
+            <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                <h3 class="text-xl font-bold mb-4">PIANO DIETA SETTIMANALE (${(clientState.dietPlan?.plan || []).length} giorni)</h3>
+                <div class="space-y-4">${dietPlanHTML || `<p class="text-gray-500 p-2">Nessun piano dieta salvato.</p>`}</div>
+                <button onclick="proApp.clearClientData('${uid}', 'dietPlan.plan')" class="mt-4 p-2 w-full text-sm bg-red-100 text-red-700 font-semibold rounded-lg hover:bg-red-200">CANCELLA PIANO</button>
+            </div>
+            <h3 class="text-xl font-bold mb-4">AGGIUNGI PASTO AL PIANO</h3>
+            <form onsubmit="event.preventDefault(); proApp.addClientDietMeal('${uid}', this.day.value, this.category.value, this.description.value, this.weight.value, this.type.value, this.calories.value); this.reset();" class="space-y-2 bg-white p-4 rounded-lg shadow">
+                <select name="day" required class="w-full p-3 border rounded-lg">
+                    <option value="" disabled selected>SELEZIONA GIORNO</option><option value="LUNEDÌ">LUNEDÌ</option><option value="MARTEDÌ">MARTEDÌ</option><option value="MERCOLEDÌ">MERCOLEDÌ</option><option value="GIOVEDÌ">GIOVEDÌ</option><option value="VENERDÌ">VENERDÌ</option><option value="SABATO">SABATO</option><option value="DOMENICA">DOMENICA</option>
+                </select>
+                <input type="text" name="category" placeholder="TIPOLOGIA PASTO (ES. COLAZIONE)" required class="w-full p-3 border rounded-lg">
+                <input type="text" name="description" placeholder="DESCRIZIONE CIBO (ES. UOVA, PANE)" required class="w-full p-3 border rounded-lg">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" name="weight" placeholder="GRAMMATURA (ES. 150G)" required class="w-full p-3 border rounded-lg">
+                    <input type="text" name="type" placeholder="TIPOLOGIA (ES. RICETTA/INTEGRATORE)" required class="w-full p-3 border rounded-lg">
+                </div>
+                <input type="number" name="calories" placeholder="KCAL PASTO" required class="w-full p-3 border rounded-lg">
+                <button type="submit" class="w-full p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 mt-4">AGGIUNGI AL PIANO</button>
+            </form>
+            <div class="bg-white p-4 rounded-lg shadow mt-4">
+              <h3 class="text-xl font-bold mb-4">CARICA PIANO / FILE</h3>
+              <input type="file" onchange="proApp.uploadFile(event, '${uid}', 'diet')" accept=".pdf,.doc,.docx,.txt,.json" class="w-full p-3 border rounded-lg bg-white text-gray-700 text-sm">
+              <button onclick="proApp.setClientView('dietImport')" class="mt-2 p-3 w-full bg-blue-100 text-blue-700 font-bold rounded-lg hover:bg-blue-200">INCOLLA TESTO / IMPORTA</button>
+            </div>
+        </div>`;
+    };
+     
+    // CORREZIONE QUI: Modificati i riferimenti a window.app con proApp e aggiunto l'UID
+    const renderDietImport = () => {
+      const uid = proApp.editingClient;
+      return `<div class="card"><h2 class="text-2xl font-bold mb-4 text-blue-600">IMPORTA PIANO DIETA</h2><p class="mb-4 text-gray-700 no-uppercase">Incolla il tuo piano di dieta qui in formato CSV: GIORNO, TIPOLOGIA, DESCRIZIONE, GRAMMATURA, ALTRO, KCAL (es. LUNEDÌ, PRANZO, POLLO, 150G, PETTO, 300).</p><textarea id="diet-import-area" class="w-full p-4 border rounded-lg h-64 font-mono text-sm no-uppercase" placeholder="INCOLLA QUI IL TESTO DEL TUO PIANO..."></textarea><button onclick="proApp.importDietPlan('${uid}', document.getElementById('diet-import-area').value)" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 mt-4">IMPORTA PIANO</button><button onclick="proApp.setClientView('diet')" class="w-full p-3 bg-gray-300 text-gray-800 font-bold rounded-lg hover:bg-gray-400 mt-2">ANNULLA</button></div>`;
+    };
+
+    // ----------- Misure Dashboard (Simplified) -----------
+    const renderMeasurementsDashboard = () => {
+        const logHTML = (clientState.measurementsLog || []).slice().reverse().map(log => {
+            const raw = log.raw || {};
+            const calc = log.calculated || {};
+            return `<li class="py-3 border-b last:border-b-0 bg-white p-3 rounded-lg shadow-sm">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-lg font-bold text-indigo-600">${log.date}</span>
+                    <button onclick="proApp.removeClientMeasurement('${uid}', ${log.id})" class="text-red-500 hover:text-red-700 transition">ELIMINA</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                    <p><strong>PESO / ALTEZZA:</strong> ${raw.weight} KG / ${raw.height} CM</p>
+                    <p><strong>BMI:</strong> ${calc.bmi} (${calc.classification})</p>
+                    <p><strong>GRASSO:</strong> ${calc.bodyFat}%</p>
+                    <p><strong>WHR:</strong> ${calc.whr} (${calc.risk})</p>
+                    <p class="col-span-2"><strong>CIRCONFERENZE:</strong> VITA ${raw.waist}, FIANCHI ${raw.hips}, PETTO ${raw.chest}, BRACCIO ${raw.bicep}, COSCIA ${raw.thigh}</p>
+                </div>
+            </li>`;
+        }).join('');
+
+        return `<div class="p-4 space-y-6">
+            <h2 class="text-2xl font-bold text-indigo-600">MISURE E PROGRESSI</h2>
+            <h3 class="text-xl font-bold mb-4">SALVA NUOVA MISURA</h3>
+            <form onsubmit="event.preventDefault(); proApp.addClientMeasurement('${uid}', this.weight.value, this.height.value, this.age.value, this.gender.value, this.waist.value, this.hips.value, this.chest.value, this.bicep.value, this.thigh.value); this.reset();" class="space-y-4 bg-white p-4 rounded-lg shadow">
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="number" name="weight" placeholder="PESO (KG)" required step="0.1" class="w-full p-3 border rounded-lg">
+                    <input type="number" name="height" placeholder="ALTEZZA (CM)" required class="w-full p-3 border rounded-lg">
+                    <input type="number" name="age" placeholder="ETÀ" required class="w-full p-3 border rounded-lg">
+                    <select name="gender" required class="w-full p-3 border rounded-lg"><option value="UOMO">UOMO</option><option value="DONNA">DONNA</option></select>
+                </div>
+                <h4 class="font-bold mt-4">CIRCONFERENZE (CM)</h4>
+                <div class="grid grid-cols-3 gap-2">
+                    <input type="number" name="waist" placeholder="VITA" required step="0.1" class="w-full p-3 border rounded-lg">
+                    <input type="number" name="hips" placeholder="FIANCHI" required step="0.1" class="w-full p-3 border rounded-lg">
+                    <input type="number" name="chest" placeholder="PETTO" required step="0.1" class="w-full p-3 border rounded-lg">
+                    <input type="number" name="bicep" placeholder="BRACCIO" required step="0.1" class="w-full p-3 border rounded-lg">
+                    <input type="number" name="thigh" placeholder="COSCIA" required step="0.1" class="w-full p-3 border rounded-lg">
+                </div>
+                <button type="submit" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 mt-4">REGISTRA MISURA</button>
+            </form>
+            <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                <h3 class="text-xl font-bold mb-4">CRONOLOGIA MISURE (${(clientState.measurementsLog || []).length})</h3>
+                <ul class="space-y-3">${logHTML || `<p class="text-gray-500 p-2">Nessuna misurazione in cronologia.</p>`}</ul>
+            </div>
+        </div>`;
+    };
+
+    // ----------- Modifica Avanzata (JSON) -----------
+    const renderAdvancedEdit = () => {
+        return `<div class="p-4">
+            <h3 class="text-xl font-bold mb-2 text-red-600">Modifica JSON Avanzata</h3>
+            <p class="text-sm text-gray-500 mb-5">Modifica diretta della struttura dati JSON del cliente. Procedi con cautela. Clicca SALVA per aggiornare.</p>
+            <form onsubmit="event.preventDefault(); proApp.saveClientEdits();">
+                <textarea id="edit-json-area" class="w-full h-96 p-3 border rounded-lg font-mono text-sm resize-none">${JSON.stringify(clientData, null, 2)}</textarea>
+                <div class="flex justify-end space-x-3 mt-4">
+                    <button type="submit" class="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700">Salva Modifiche JSON</button>
+                </div>
+            </form>
+        </div>`;
+    };
+
+    switch(this.currentClientView) {
+        case 'workout':
+            return renderWorkoutDashboard();
+        case 'workoutImport': 
+          return renderWorkoutImport(); 
+        case 'diet':
+            return renderDietDashboard();
+        case 'dietImport': 
+          return  renderDietImport(); 
+        case 'measurements':
+            return renderMeasurementsDashboard();
+        case 'advanced':
+            return renderAdvancedEdit();
+        default:
+            return `<p class="p-4 text-center text-gray-500">Seleziona una scheda.</p>`;
+    }
+  },
+  
+  // Aggiornamento di openEditClientModal per gestire le schede
+  openEditClientModal(uid, initialView = 'workout') {
+    const clientData = this.clientsData[uid];
+    if (!clientData) return alert("Dati del cliente non trovati.");
+    this.editingClient = uid;
+    this.currentClientView = initialView; // Imposta la vista corrente
+    
+    // Rirenderizza l'HTML del modale per aggiornare le classi 'active' dei pulsanti
+    const modalContainer = document.getElementById('edit-client-modal');
+    if (modalContainer) {
+        // Un trucco per ri-renderizzare il modale e aggiornare i bottoni
+        modalContainer.outerHTML = this.renderEditClientModal();
+    }
+
+    document.getElementById('edit-client-title').textContent = `Gestione Dati: ${clientData.displayUsername}`;
+    document.getElementById('edit-client-content').innerHTML = this.renderClientManagementContent(uid);
+
+    const modal = document.getElementById('edit-client-modal');
+    modal.classList.remove('hidden'); modal.classList.add('flex');
+  },
+  
+  closeEditClientModal(){ 
+    const m = document.getElementById('edit-client-modal'); 
+    if (m){ m.classList.add('hidden'); m.classList.remove('flex'); } 
+    this.editingClient = null; 
+    this.currentClientView = 'workout'; // Reset della vista
+  },
+
+  async saveClientEdits() {
+    if (this.currentClientView !== 'advanced' || !this.editingClient) return; // Salva solo dalla scheda JSON
+    let updatedData;
+    try { updatedData = JSON.parse(document.getElementById('edit-json-area').value); }
+    catch (e) { return alert("Errore nel formato JSON: " + e.message); }
+
+    const uid = this.editingClient;
+    try {
+      // Rimuovo l'uid che ho aggiunto per la comodità interna prima di salvare
+      const { uid: _, ...dataToSave } = updatedData; 
+      
+      await setDoc(this.getUserDocRef(uid), dataToSave, { merge: true });
+      this.clientsData[uid] = updatedData;
+      
+      alert("Dati del cliente aggiornati con successo.");
+      await this.loadClientsData();
+      this.render(); // Ricarica la dashboard principale
+
+      // Riapre il modale sulla stessa scheda
+      this.openEditClientModal(uid, 'advanced');
+    } catch (err) {
+      console.error("Errore saveClientEdits:", err);
+      alert("Errore durante il salvataggio: " + (err?.message || err));
+    }
+  },
+
+  // ------------- NUOVE FUNZIONI CRUD PER IL PROFESSIONISTA -------------
+  
+  // Esempio: Aggiunta di un Esercizio al Cliente
+  async addClientWorkout(uid, day, exercise, sets, reps, load) {
+      if (!uid) return;
+
+      const clientData = this.clientsData[uid];
+      if (!clientData || clientData.userType !== 'user') return alert("Cliente non valido.");
+      
+      const newWorkout = {
+          id: Date.now() + Math.floor(Math.random()*10000), // Genera ID fittizio
+          day: String(day).toUpperCase(),
+          exercise: exercise,
+          sets: sets,
+          reps: reps,
+          load: load
+      };
+
+      const newWorkoutArray = [...(clientData.data.workout || []), newWorkout];
+
+      try {
+          await updateDoc(this.getUserDocRef(uid), { 'data.workout': newWorkoutArray });
+          
+          // Aggiorna l'oggetto locale
+          this.clientsData[uid].data.workout = newWorkoutArray;
+          
+          // Ricarica la vista
+          this.openEditClientModal(uid, 'workout');
+          alert("Esercizio aggiunto con successo!");
+      } catch (err) {
+          console.error("Errore addClientWorkout:", err);
+          alert("Errore durante l'aggiunta dell'esercizio: " + (err?.message || err));
+      }
+  },
+
+  // Esempio: Aggiunta di un Pasto al Piano Dieta del Cliente
+  async addClientDietMeal(uid, day, category, description, weight, type, calories) {
+      if (!uid) return;
+
+      const clientData = this.clientsData[uid];
+      if (!clientData || clientData.userType !== 'user') return alert("Cliente non valido.");
+      
+      const newMeal = { category, description, weight, type, calories: Number(calories) };
+      
+      const dietPlan = clientData.data.dietPlan?.plan || [];
+      const dayIndex = dietPlan.findIndex(p => p.day === String(day).toUpperCase());
+      
+      let newDietPlan;
+
+      if (dayIndex !== -1) {
+          // Giorno esistente: aggiungi il pasto
+          newDietPlan = [...dietPlan];
+          newDietPlan[dayIndex].meals.push(newMeal);
+      } else {
+          // Nuovo giorno: crea il piano per il giorno
+          newDietPlan = [...dietPlan, { day: String(day).toUpperCase(), meals: [newMeal] }];
+      }
+      
+      try {
+          await updateDoc(this.getUserDocRef(uid), { 'data.dietPlan.plan': newDietPlan });
+          
+          // Aggiorna l'oggetto locale
+          this.clientsData[uid].data.dietPlan.plan = newDietPlan;
+
+          // Ricarica la vista
+          this.openEditClientModal(uid, 'diet');
+          alert("Pasto aggiunto al piano dieta con successo!");
+      } catch (err) {
+          console.error("Errore addClientDietMeal:", err);
+          alert("Errore durante l'aggiunta del pasto: " + (err?.message || err));
+      }
+  },
+  
+  // Esempio: Cancellazione di un campo specifico (es. piano completo)
+  async clearClientData(uid, fieldPath) {
+      if (!confirm(`Sei sicuro di voler cancellare i dati in ${fieldPath}? Questa azione è irreversibile.`)) return;
+      if (!uid) return;
+      
+      try {
+          // Firestore non supporta l'eliminazione di un campo in un array o un oggetto con un path.
+          // Dobbiamo caricare i dati, modificarli e risalvare l'intero oggetto parent.
+          const docRef = this.getUserDocRef(uid);
+          const snap = await getDoc(docRef);
+          if (!snap.exists()) return alert("Documento cliente non trovato.");
+
+          let clientData = snap.data();
+          let data = clientData.data;
+
+          if (fieldPath === 'workout') {
+              data.workout = [];
+          } else if (fieldPath === 'dietPlan.plan') {
+              data.dietPlan.plan = [];
+          } else {
+              return alert("Path non supportato per la cancellazione rapida.");
+          }
+          
+          await updateDoc(docRef, { data: data });
+          
+          // Aggiorna locale e ricarica
+          this.clientsData[uid].data = data;
+          this.openEditClientModal(uid, fieldPath.includes('diet') ? 'diet' : 'workout');
+          alert("Dati cancellati con successo!");
+
+      } catch (err) {
+          console.error("Errore clearClientData:", err);
+          alert("Errore durante la cancellazione dei dati: " + (err?.message || err));
+      }
+  },
+
+  // Esempio: Rimozione di una Misurazione
+  async removeClientMeasurement(uid, measurementId) {
+      if (!confirm("Sei sicuro di voler eliminare questa misurazione?")) return;
+      if (!uid) return;
+
+      const clientData = this.clientsData[uid];
+      if (!clientData) return alert("Cliente non valido.");
+      
+      const newLog = (clientData.data.measurementsLog || []).filter(log => log.id !== measurementId);
+
+      try {
+          await updateDoc(this.getUserDocRef(uid), { 'data.measurementsLog': newLog });
+          
+          // Aggiorna l'oggetto locale
+          this.clientsData[uid].data.measurementsLog = newLog;
+
+          // Ricarica la vista
+          this.openEditClientModal(uid, 'measurements');
+          alert("Misurazione rimossa con successo!");
+      } catch (err) {
+          console.error("Errore removeClientMeasurement:", err);
+          alert("Errore durante la rimozione della misurazione: " + (err?.message || err));
+      }
+  },
+
+  // Esempio: Registrazione di una Misurazione (Placeholder, la logica di calcolo va implementata)
+  async addClientMeasurement(uid, weight, height, age, gender, waist, hips, chest, bicep, thigh) {
+      if (!uid) return;
+      
+      const today = new Date().toISOString().slice(0, 10);
+      const rawData = {
+          weight: Number(weight),
+          height: Number(height),
+          age: Number(age),
+          gender: String(gender),
+          waist: Number(waist),
+          hips: Number(hips),
+          chest: Number(chest),
+          bicep: Number(bicep),
+          thigh: Number(thigh),
+      };
+      
+      // LOGICA DI CALCOLO SEMPLIFICATA O FITTIZIA
+      const calculateBMI = (w, h) => (w / ((h / 100) ** 2)).toFixed(2);
+      const calculateWHR = (w, h) => (w / h).toFixed(2);
+      
+      const calculatedData = {
+          bmi: calculateBMI(rawData.weight, rawData.height),
+          whr: calculateWHR(rawData.waist, rawData.hips),
+          bodyFat: 'N/D', // Richiede formule complesse
+          classification: 'Da Calcolare',
+          risk: 'Da Calcolare',
+      };
+
+      const newMeasurement = {
+          id: Date.now(),
+          date: today,
+          raw: rawData,
+          calculated: calculatedData,
+      };
+
+      const clientData = this.clientsData[uid];
+      const newLog = [...(clientData.data.measurementsLog || []), newMeasurement];
+
+      try {
+          await updateDoc(this.getUserDocRef(uid), { 'data.measurementsLog': newLog });
+          this.clientsData[uid].data.measurementsLog = newLog;
+          
+          this.openEditClientModal(uid, 'measurements');
+          alert("Misurazione aggiunta con successo!");
+      } catch (err) {
+          console.error("Errore addClientMeasurement:", err);
+          alert("Errore durante l'aggiunta della misurazione: " + (err?.message || err));
+      }
+  },
+  
+  // Esempio: Salva Compliance (Marca come completato per il giorno)
+  async saveWorkoutCompliance(uid, status) {
+      if (!uid) return;
+      const today = new Date().toISOString().slice(0, 10);
+      
+      try {
+          await updateDoc(this.getUserDocRef(uid), { 
+              [`data.dailyCompliance.${today}.workout`]: status 
+          });
+
+          // Aggiorna l'oggetto locale
+          this.clientsData[uid].data.dailyCompliance[today] = this.clientsData[uid].data.dailyCompliance[today] || {};
+          this.clientsData[uid].data.dailyCompliance[today].workout = status;
+
+          this.openEditClientModal(uid, 'workout');
+          alert("Stato di completamento Allenamento aggiornato.");
+      } catch (err) {
+          console.error("Errore saveWorkoutCompliance:", err);
+          alert("Errore aggiornamento stato: " + (err?.message || err));
+      }
+  },
+
+  async saveDietCompliance(uid, status) {
+      if (!uid) return;
+      const today = new Date().toISOString().slice(0, 10);
+      
+      try {
+          await updateDoc(this.getUserDocRef(uid), { 
+              [`data.dailyCompliance.${today}.diet`]: status 
+          });
+
+          // Aggiorna l'oggetto locale
+          this.clientsData[uid].data.dailyCompliance[today] = this.clientsData[uid].data.dailyCompliance[today] || {};
+          this.clientsData[uid].data.dailyCompliance[today].diet = status;
+
+          this.openEditClientModal(uid, 'diet');
+          alert("Stato di completamento Dieta aggiornato.");
+      } catch (err) {
+          console.error("Errore saveDietCompliance:", err);
+          alert("Errore aggiornamento stato: " + (err?.message || err));
+      }
+  },
+  
+  // FUNZIONI DI IMPORTAZIONE (PLACEHOLDER)
+  async importWorkoutPlan(uid, rawText) {
+      if (!uid) return;
+      console.log(`Tentativo di importazione Allenamento per ${uid}`, rawText);
+      alert(`Importazione Allenamento per ${uid} (testo: ${rawText.substring(0, 30)}...). Logica di parsing e salvataggio da implementare. Se implementata, aggiornare il campo 'data.workout' del cliente.`);
+      // Qui andrebbe la logica di parsing (CSV, JSON, ecc.) e salvataggio.
+      // Esempio di aggiornamento: await updateDoc(this.getUserDocRef(uid), { 'data.workout': newParsedWorkoutArray });
+      // Dopo il salvataggio: await this.loadClientsData(); 
+      this.openEditClientModal(uid, 'workout'); // Torna alla vista Allenamento
+  },
+
+  async importDietPlan(uid, rawText) {
+      if (!uid) return;
+      console.log(`Tentativo di importazione Dieta per ${uid}`, rawText);
+      alert(`Importazione Dieta per ${uid} (testo: ${rawText.substring(0, 30)}...). Logica di parsing e salvataggio da implementare. Se implementata, aggiornare il campo 'data.dietPlan.plan' del cliente.`);
+      // Qui andrebbe la logica di parsing (CSV, JSON, ecc.) e salvataggio.
+      // Esempio di aggiornamento: await updateDoc(this.getUserDocRef(uid), { 'data.dietPlan.plan': newParsedDietPlanArray });
+      // Dopo il salvataggio: await this.loadClientsData(); 
+      this.openEditClientModal(uid, 'diet'); // Torna alla vista Dieta
+  },
+  
+  uploadFile(event, uid, type) {
+      const file = event.target.files[0];
+      if (file) {
+          console.log(`Caricamento file ${file.name} per ${uid} (${type})`);
+          alert(`Caricamento file ${file.name} per ${uid} (${type}). Logica di caricamento (es. Firebase Storage) e parsing da implementare.`);
+      }
+  },
+  // FINE NUOVE FUNZIONI CRUD
+  
+  async signOut() {
+    try {
+      await signOut(this.auth);
+    } catch (e) { console.warn("Errore durante signOut:", e); }
+    localStorage.removeItem('__firebase_config');
+    window.location.href = "index.html";
+  }
+};
+
+window.proApp = proApp;
+document.addEventListener('DOMContentLoaded', () => proApp.init());
+</script>
+</body>
+</html>

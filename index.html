@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Lifestyle Designer PWA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="#pwa-manifest">
+    <script id="pwa-manifest" type="application/json">
+        {
+          "name": "Lifestyle Designer",
+          "short_name": "LifeDesign",
+          "description": "Monitora abitudini, allenamento, dieta e sonno.",
+          "start_url": "./",
+          "display": "standalone",
+          "background_color": "#f3f4f6",
+          "theme_color": "#2563eb",
+          "icons": [
+            {
+              "src": "https://placehold.co/192x192/2563eb/ffffff?text=LD",
+              "sizes": "192x192",
+              "type": "image/png"
+            },
+            {
+              "src": "https://placehold.co/512x512/2563eb/ffffff?text=LD",
+              "sizes": "512x512",
+              "type": "image/png"
+            }
+          ]
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+            text-transform: uppercase;
+        }
+        .container { max-width: 480px; }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.06);
+            padding: 1.5rem;
+        }
+        .no-uppercase { text-transform: none !important; }
+        .code-example {
+            font-family: monospace;
+            white-space: pre;
+            overflow-x: auto;
+            background-color: #f0f4ff;
+            color: #333;
+            border: 1px solid #dbeafe;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            font-size: 0.75rem;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6">
+    <div id="app" class="container mx-auto"></div>
+
+    <script type="module">
+      // ---------- Firebase SDK ----------
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+      import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+      import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+      // (analytics import omitted - optional)
+
+      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+      const firebaseConfig = {
+        apiKey: "AIzaSyDDi0OXyc3Fn9bVnR8xobyu3Qf61qBJEVE",
+        authDomain: "lifestyle-fac1d.firebaseapp.com",
+        projectId: "lifestyle-fac1d",
+        storageBucket: "lifestyle-fac1d.firebasestorage.app",
+        messagingSenderId: "49251122953",
+        appId: "1:49251122953:web:00eb812d9ee00503539dd8",
+        measurementId: "G-H8HSFCF8HM"
+      };
+
+      const firebaseApp = initializeApp(firebaseConfig);
+      const db = getFirestore(firebaseApp);
+      const auth = getAuth(firebaseApp);
+
+      // NUOVA FUNZIONE HELPER PER IL REDIRECT
+        async function redirectToProDashboard() {
+          try {
+            // 1. Salva la configurazione di Firebase nel localStorage
+            localStorage.setItem('__firebase_config', JSON.stringify(firebaseConfig));
+            
+            // 2. Esegui il redirect (NON serve più il token)
+            window.location.href = "pro.html";
+          } catch (error) {
+            console.error("Errore durante la preparazione del redirect:", error);
+            displayError("IMPOSSIBILE ACCEDERE ALLA DASHBOARD PRO.");
+          }
+        }
+      // Expose for debugging if needed
+      window._firebase = { app: firebaseApp, db, auth };
+
+      // ---------- APP STATE ----------
+      let state = {
+        view: 'login',
+        wizardStep: 0,
+        isAuthenticated: false,
+        username: null,      // display username (UPPERCASE)
+        uid: null,           // firebase uid
+        isMenuOpen: false,
+        deferredPrompt: null,
+        data: {
+            habits: [],
+            workout: [],
+            uploadedWorkoutPlans: [],
+            diet: [],
+            dietPlan: { targetCalories: 2000, plan: [] },
+            uploadedDietPlans: [],
+            dailyCompliance: {},
+            measurementsLog: []
+        },
+        sleepStartTimestamp: null,
+        sleepTimerIntervalId: null,
+        error: null,
+        editingWorkoutId: null,
+        editingDietMeal: null,
+        viewingFile: null
+      };
+
+      // ---------- UTILS ----------
+      function simpleHash(str) {
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) {
+              hash = str.charCodeAt(i) + ((hash << 5) - hash);
+          }
+          return hash;
+      }
+      function getTodayDateString() { return new Date().toISOString().split('T')[0]; }
+      function displayError(message) {
+          state.error = message;
+          render();
+          setTimeout(() => { state.error = null; render(); }, 5000);
+      }
+      function decodeBase64Text(base64) {
+          try {
+              const base64Content = base64.split(',')[1] || base64;
+              return decodeURIComponent(escape(atob(base64Content)));
+          } catch (e) {
+              console.error("Errore di decodifica Base64:", e);
+              return "ERRORE: IMPOSSIBILE DECODIFICARE IL CONTENUTO TESTUALE.";
+          }
+      }
+
+      // ---------- FIRESTORE PERSISTENCE ----------
+      // Save the entire state.data + sleepStartTimestamp under users/{uid}
+      async function saveAppState() {
+        if (!state.uid) return;
+        try {
+          const userRef = doc(db, "users", state.uid);
+          // Keep a copy of the data, ensure no functions or circular
+          const payload = {
+            data: state.data || {},
+            sleepStartTimestamp: state.sleepStartTimestamp || null,
+            displayUsername: state.username || null,
+            updatedAt: new Date().toISOString()
+          };
+          await setDoc(userRef, payload, { merge: true });
+        } catch (err) {
+          console.error("Errore salvataggio Firebase:", err);
+          displayError("ERRORE SALVATAGGIO CLOUD");
+        }
+      }
+
+      // Load user data from users/{uid} and apply to state
+      async function loadUserData() {
+        if (!state.uid) return;
+        try {
+          const userRef = doc(db, "users", state.uid);
+          const snap = await getDoc(userRef);
+          if (snap.exists()) {
+            const obj = snap.data();
+            // obj may contain .data (app data) and sleepStartTimestamp
+            state.data = obj.data || {
+                habits: [],
+                workout: [],
+                uploadedWorkoutPlans: [],
+                diet: [],
+                dietPlan: { targetCalories: 2000, plan: [] },
+                uploadedDietPlans: [],
+                dailyCompliance: {},
+                measurementsLog: []
+            };
+            state.sleepStartTimestamp = obj.sleepStartTimestamp || null;
+
+            // start sleep timer if needed
+            if (state.sleepStartTimestamp && !state.sleepTimerIntervalId) {
+              state.sleepTimerIntervalId = setInterval(() => render(), 1000);
+            }
+            // migrate old shape if needed
+            if (!state.data.dailyCompliance) state.data.dailyCompliance = {};
+            if (!state.data.dietPlan) state.data.dietPlan = { targetCalories: 2000, plan: [] };
+            if (!state.data.dietPlan.plan) state.data.dietPlan.plan = [];
+            if (!state.data.measurementsLog) state.data.measurementsLog = [];
+            if (!state.data.uploadedWorkoutPlans) state.data.uploadedWorkoutPlans = [];
+            if (!state.data.uploadedDietPlans) state.data.uploadedDietPlans = [];
+          } else {
+            // initialize empty
+            state.data = {
+                habits: [],
+                workout: [],
+                uploadedWorkoutPlans: [],
+                diet: [],
+                dietPlan: { targetCalories: 2000, plan: [] },
+                uploadedDietPlans: [],
+                dailyCompliance: {},
+                measurementsLog: []
+            };
+            state.sleepStartTimestamp = null;
+            // create doc
+            await saveAppState();
+          }
+        } catch (err) {
+          console.error("Errore caricamento Firebase:", err);
+          displayError("ERRORE CARICAMENTO CLOUD");
+        }
+      }
+
+      // ---------- AUTH STATE LISTENER (MODIFICATO) ----------
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          state.uid = user.uid;
+          if (!state.username && user.email) {
+            const inferred = user.email.split('@')[0].toUpperCase();
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            const userData = userDoc.exists() ? userDoc.data() : {};
+              const userType = userData.userType || "user";
+            state.username = inferred;
+          }
+          state.isAuthenticated = true;
+
+          await loadUserData();
+
+          // 🔹 Recupera il tipo di utente dal database
+          // NOTA: Leggiamo da Firestore, non dallo state locale per sicurezza.
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          const userData = userDoc.exists() ? userDoc.data() : {};
+          const userType = userData.userType || "user";
+
+          if (userType === "pro") {
+            // Utilizza la nuova funzione per il redirect
+            redirectToProDashboard();
+            return;
+          }
+
+          if (!state.username && state.data && state.data.displayUsername) {
+            state.username = state.data.displayUsername;
+          }
+
+          state.view = 'summary';
+          render();
+        } else {
+          if (state.sleepTimerIntervalId) {
+            clearInterval(state.sleepTimerIntervalId);
+            state.sleepTimerIntervalId = null;
+          }
+          state.uid = null;
+          state.username = null;
+          state.isAuthenticated = false;
+          state.view = 'login';
+          render();
+        }
+      });
+
+
+      // ---------- APP LOGIC ----------
+      window.app = {
+        // LOGIN with username -> construct fake email
+        login: async function(username, password) {
+          try {
+            const userKey = username.toLowerCase();
+            const email = `${userKey}@lifestyledesigner.app`;
+            await signInWithEmailAndPassword(auth, email, password);
+            // onAuthStateChanged gestirà il caricamento dati e il redirect se necessario
+            state.username = userKey.toUpperCase();
+          } catch (err) {
+            console.error("Login error:", err);
+            displayError('NOME UTENTE O PASSWORD NON VALIDI.');
+          }
+        },
+
+        // REGISTER with username -> create fake email (MODIFICATO)
+        register: async function(username, password, userType = "user") {
+          try {
+            const userKey = username.toLowerCase();
+            const email = `${userKey}@lifestyledesigner.app`;
+
+            const cred = await createUserWithEmailAndPassword(auth, email, password);
+            const newUser = cred.user;
+
+            state.username = userKey.toUpperCase();
+            state.uid = newUser.uid;
+            state.isAuthenticated = true;
+
+            // Salva il tipo di utente (user/pro) nel documento Firestore
+            const userRef = doc(db, "users", newUser.uid);
+            await setDoc(userRef, { 
+                userType: userType, 
+                displayUsername: state.username,
+                clients: [] // Aggiungi un array vuoto di clienti per i pro
+            }, { merge: true });
+            
+            if (userType === "pro") {
+              // Utilizza la nuova funzione per il redirect
+              redirectToProDashboard();
+              return;
+            }
+
+            // per utenti normali
+            state.view = 'wizard';
+            state.wizardStep = 1;
+            render();
+            displayError('REGISTRAZIONE RIUSCITA! INIZIA LA CONFIGURAZIONE.');
+          } catch (err) {
+            console.error("Register error:", err);
+            if (err.code === 'auth/email-already-in-use') {
+              displayError('NOME UTENTE GIÀ IN USO. SCEGLI UN ALTRO NOME.');
+            } else if (err.code === 'auth/weak-password') {
+              displayError('PASSWORD DEBOLE. SCEGLI UNA PASSWORD PIÙ FORTE.');
+            } else {
+              displayError('ERRORE DURANTE LA REGISTRAZIONE.');
+            }
+          }
+        },
+
+        logout: async function() {
+          try {
+            await signOut(auth);
+            // onAuthStateChanged will reset UI
+            displayError('DISCONNESSO.');
+          } catch (err) {
+            console.error("SignOut error:", err);
+            displayError('ERRORE DURANTE LOGOUT.');
+          }
+        },
+
+        setView: function(newView) { state.view = newView; state.isMenuOpen = false; render(); },
+        toggleMenu: function() { state.isMenuOpen = !state.isMenuOpen; render(); },
+
+        installPWA: async function() {
+          if (state.deferredPrompt) {
+            state.deferredPrompt.prompt();
+            const { outcome } = await state.deferredPrompt.userChoice;
+            if (outcome === 'accepted') displayError('INSTALLAZIONE PWA ACCETTATA!');
+            else displayError('INSTALLAZIONE PWA RIFIUTATA.');
+            state.deferredPrompt = null;
+            render();
+          } else {
+            displayError('IL BROWSER NON SUPPORTA L\'INSTALLAZIONE DIRETTA O L\'APP È GIÀ INSTALLATA.');
+          }
+        },
+
+        viewFile: function(id, type) {
+          const plan = type === 'workout'
+            ? state.data.uploadedWorkoutPlans.find(p => p.id === id)
+            : state.data.uploadedDietPlans.find(p => p.id === id);
+          if (plan) {
+            state.viewingFile = { id: plan.id, name: plan.name, dataUrl: plan.dataUrl, type: plan.type };
+            render();
+          }
+        },
+        closeFileViewer: function() { state.viewingFile = null; render(); },
+
+        addHabit: function(description) {
+          if (description.trim() === '') return displayError('INSERISCI UNA DESCRIZIONE.');
+          state.data.habits.push({ id: Date.now(), description: description.toUpperCase(), completed: false });
+          saveAppState();
+          render();
+        },
+        removeHabit: function(id) {
+          state.data.habits = state.data.habits.filter(h => h.id !== id);
+          saveAppState();
+          render();
+        },
+        toggleHabitCompletion: function(id) {
+          const today = getTodayDateString();
+          const habit = state.data.habits.find(h => h.id === id);
+          if (habit) habit.completed = !habit.completed;
+          const allCompleted = state.data.habits.length > 0 && state.data.habits.every(h => h.completed);
+          if (!state.data.dailyCompliance[today]) state.data.dailyCompliance[today] = { habits:false, workout:false, diet:false };
+          state.data.dailyCompliance[today].habits = allCompleted;
+          saveAppState();
+          render();
+        },
+
+        addWorkout: function(day, exercise, sets, reps, load) {
+          const parsedSets = parseInt(sets) || 0;
+          const parsedReps = parseInt(reps) || 0;
+          const loadValue = load ? load.trim().toUpperCase() : 'N/D';
+          if (day.trim() === '' || exercise.trim() === '') return displayError('GIORNO E NOME ESERCIZIO SONO OBBLIGATORI.');
+          state.data.workout.push({
+            id: Date.now(),
+            day: day.toUpperCase(),
+            exercise: exercise,
+            sets: parsedSets,
+            reps: parsedReps,
+            load: loadValue
+          });
+          saveAppState();
+          render();
+        },
+        removeWorkout: function(id) { state.data.workout = state.data.workout.filter(w => w.id !== id); saveAppState(); render(); },
+
+        uploadWorkoutFile: function(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const fileData = { id: Date.now(), name: file.name.toUpperCase(), type: file.type, dataUrl: e.target.result };
+            state.data.uploadedWorkoutPlans.push(fileData);
+            saveAppState();
+            render();
+            displayError(`FILE '${file.name.toUpperCase()}' CARICATO CON SUCCESSO.`);
+          };
+          reader.onerror = function(){ displayError('ERRORE DURANTE LA LETTURA DEL FILE.'); };
+          reader.readAsDataURL(file);
+          event.target.value = '';
+        },
+        removeUploadedWorkoutFile: function(id) {
+          state.data.uploadedWorkoutPlans = state.data.uploadedWorkoutPlans.filter(p => p.id !== id);
+          saveAppState();
+          render();
+          displayError('FILE PIANO ALLENAMENTO RIMOSSO.');
+        },
+        markWorkoutCompleted: function() {
+          const today = getTodayDateString();
+          if (!state.data.dailyCompliance[today]) state.data.dailyCompliance[today] = { habits:false, workout:false, diet:false };
+          state.data.dailyCompliance[today].workout = true;
+          saveAppState();
+          render();
+        },
+
+        importWorkoutPlan: function(textContent) {
+          try {
+            let newWorkoutData = [];
+            const content = textContent.trim();
+            if (content.startsWith('[')) {
+              const newPlan = JSON.parse(content);
+              if (!Array.isArray(newPlan)) throw new Error('Il formato JSON deve essere un array.');
+              newWorkoutData = newPlan.map(item => ({
+                id: Date.now() + Math.random(),
+                day: item.day?.toUpperCase() || 'NON SPECIFICATO',
+                exercise: item.exercise?.toUpperCase() || 'NON SPECIFICATO',
+                sets: parseInt(item.sets) || 0,
+                reps: parseInt(item.reps) || 0,
+                load: item.load ? item.load.trim().toUpperCase() : 'N/D'
+              }));
+            } else if (content.includes(',') && content.split('\n')[0].split(',').length >= 3) {
+              const rows = content.split('\n');
+              rows.forEach(line => {
+                const [day, exercise, sets, reps, load] = line.split(',').map(s => s.trim());
+                if (day && exercise && !isNaN(sets) && !isNaN(reps)) {
+                  newWorkoutData.push({
+                    id: Date.now() + Math.random(),
+                    day: day.toUpperCase(),
+                    exercise: exercise.toUpperCase(),
+                    sets: parseInt(sets),
+                    reps: parseInt(reps),
+                    load: load ? load.toUpperCase() : 'N/D'
+                  });
+                }
+              });
+            } else {
+              const lines = content.split('\n');
+              let currentDay = 'NOTE / PRE-ALLENAMENTO';
+              lines.forEach(line => {
+                const trimmedLine = line.trim();
+                if (!trimmedLine) return;
+                const dayMatch = trimmedLine.match(/^(GIORNO\s*\d+.*)/i);
+                if (dayMatch) {
+                  currentDay = dayMatch[1].replace(':','').trim().toUpperCase();
+                } else if (trimmedLine.length > 2) {
+                  const exerciseText = trimmedLine.replace(/^[-•*]\s*/, '').trim();
+                  newWorkoutData.push({
+                    id: Date.now() + Math.random(),
+                    day: currentDay,
+                    exercise: exerciseText,
+                    sets: 0,
+                    reps: 0,
+                    load: 'N/D'
+                  });
+                }
+              });
+            }
+            if (newWorkoutData.length === 0) throw new Error('Nessun dato valido trovato nel testo.');
+            state.data.workout = newWorkoutData;
+            saveAppState();
+            state.view = 'workout';
+            render();
+            displayError(`PIANO IMPORTATO (${newWorkoutData.length} righe).`);
+          } catch (e) {
+            displayError('ERRORE IMPORTAZIONE: ' + e.message.toUpperCase());
+          }
+        },
+
+        startEditingWorkout: function(id) { state.editingWorkoutId = id; render(); },
+        cancelEditingWorkout: function() { state.editingWorkoutId = null; render(); },
+        updateWorkout: function(id, day, exercise, sets, reps, load) {
+          const workout = state.data.workout.find(w => w.id === id);
+          if (workout) {
+            workout.day = day.toUpperCase();
+            workout.exercise = exercise;
+            workout.sets = parseInt(sets) || 0;
+            workout.reps = parseInt(reps) || 0;
+            workout.load = load ? load.trim().toUpperCase() : 'N/D';
+            state.editingWorkoutId = null;
+            saveAppState();
+            render();
+          } else displayError('ERRORE: ESERCIZIO NON TROVATO.');
+        },
+        clearWorkoutPlan: function() { state.data.workout = []; saveAppState(); render(); displayError('PIANO DI ALLENAMENTO CANCELLATO.'); },
+
+        setCaloricTarget: function(calories) {
+          const target = parseInt(calories);
+          if (isNaN(target) || target <= 0) return displayError('L\'OBIETTIVO CALORICO DEVE ESSERE UN NUMERO POSITIVO.');
+          state.data.dietPlan.targetCalories = target;
+          saveAppState();
+          displayError(`OBIETTIVO CALORICO IMPOSTATO A ${target} KCAL.`);
+          render();
+        },
+
+        importDietPlan: function(textContent) {
+          try {
+            let newPlanGrouped = [];
+            const content = textContent.trim();
+            const dayLabels = ['LUNEDÌ','MARTEDÌ','MERCOLEDÌ','GIOVEDÌ','VENERDÌ','SABATO','DOMENICA'];
+            const groupedByDay = {};
+            const rows = content.split('\n');
+            rows.forEach(line => {
+              const parts = line.split(',').map(s => s.trim().toUpperCase());
+              // Format: GIORNO, CATEGORIA (TIPOLOGIA), DESCRIZIONE, GRAMMATURA (WEIGHT), TIPOLOGIA (ALTRO), KCAL
+              if (parts.length >= 6 && dayLabels.includes(parts[0])) {
+                const [day, category, description, weight, type, calories] = parts;
+                const parsedCalories = parseInt(calories);
+                if (day && category && description && weight && type && !isNaN(parsedCalories) && parsedCalories > 0) {
+                  const dayKey = day.toUpperCase();
+                  if (!groupedByDay[dayKey]) groupedByDay[dayKey] = { day: dayKey, meals: [] };
+                  // Note: category is TIPOLOGIA, type is ALTRO
+                  groupedByDay[dayKey].meals.push({ category, description, weight, type, calories: parsedCalories });
+                }
+              }
+            });
+            newPlanGrouped = Object.values(groupedByDay);
+            if (newPlanGrouped.length === 0) throw new Error('NESSUN DATO VALIDO TROVATO. FORMATO ATTESO: GIORNO, TIPOLOGIA, DESCRIZIONE, GRAMMATURA, ALTRO, KCAL.');
+            state.data.dietPlan.plan = newPlanGrouped;
+            saveAppState();
+            state.view = 'diet';
+            render();
+            displayError(`PIANO DIETA IMPORTATO CON SUCCESSO (${newPlanGrouped.length} GIORNI).`);
+          } catch (e) {
+            displayError('ERRORE IMPORTAZIONE DIETA: ' + e.message.toUpperCase());
+          }
+        },
+
+        // This function handles the 6 required meal details plus the day:
+        // day (GIORNO), category (TIPOLOGIA), description (DESCRIZIONE), weight (GRAMMI), type (ALTRO), calories (KCAL)
+        addMealToPlan: function(day, category, description, weight, type, calories) {
+          const parsedCalories = parseInt(calories);
+          if (!day || !category || !description || !weight || !type || isNaN(parsedCalories) || parsedCalories <= 0) {
+            return displayError("TUTTI I CAMPI SONO OBBLIGATORI E LE KCAL DEVONO ESSERE UN NUMERO POSITIVO.");
+          }
+          let dayPlan = state.data.dietPlan.plan.find(d => d.day === day.toUpperCase());
+          const newMeal = {
+            category: category.toUpperCase(),
+            description: description.toUpperCase(),
+            weight: weight.toUpperCase(),
+            type: type.toUpperCase(),
+            calories: parsedCalories
+          };
+          if (dayPlan) dayPlan.meals.push(newMeal);
+          else state.data.dietPlan.plan.push({ day: day.toUpperCase(), meals: [newMeal] });
+          saveAppState();
+          render();
+        },
+
+        removeMealFromPlan: function(dayIndex, mealIndex) {
+          const day = state.data.dietPlan.plan[dayIndex];
+          if (day) {
+            day.meals.splice(mealIndex, 1);
+            if (day.meals.length === 0) state.data.dietPlan.plan.splice(dayIndex, 1);
+            saveAppState();
+            render();
+          }
+        },
+
+        startEditingDietMeal: function(dayIndex, mealIndex) { state.editingDietMeal = { dayIndex, mealIndex }; render(); },
+        cancelEditingDietMeal: function() { state.editingDietMeal = null; render(); },
+        updateDietMeal: function(dayIndex, mealIndex, category, description, weight, type, calories) {
+          const parsedCalories = parseInt(calories);
+          if (isNaN(parsedCalories) || parsedCalories <= 0) return displayError("LE KCAL DEVONO ESSERE UN NUMERO POSITIVO.");
+          const day = state.data.dietPlan.plan[dayIndex];
+          if (day && day.meals[mealIndex]) {
+            const meal = day.meals[mealIndex];
+            meal.category = category.toUpperCase(); // TIPOLOGIA
+            meal.description = description.toUpperCase(); // DESCRIZIONE
+            meal.weight = weight.toUpperCase(); // GRAMMI
+            meal.type = type.toUpperCase(); // ALTRO
+            meal.calories = parsedCalories; // KCAL
+            state.editingDietMeal = null;
+            saveAppState();
+            render();
+          } else displayError('ERRORE: PASTO NON TROVATO.');
+        },
+
+        clearDietPlan: function() { state.data.dietPlan.plan = []; saveAppState(); render(); displayError('PIANO DIETA CANCELLATO.'); },
+
+        uploadDietFile: function(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const fileData = { id: Date.now(), name: file.name.toUpperCase(), type: file.type, dataUrl: e.target.result };
+            state.data.uploadedDietPlans.push(fileData);
+            saveAppState();
+            render();
+            displayError(`FILE DIETA '${file.name.toUpperCase()}' CARICATO.`);
+          };
+          reader.onerror = function(){ displayError('ERRORE DURANTE LA LETTURA DEL FILE.'); };
+          reader.readAsDataURL(file);
+          event.target.value = '';
+        },
+        removeUploadedDietFile: function(id) { state.data.uploadedDietPlans = state.data.uploadedDietPlans.filter(p => p.id !== id); saveAppState(); render(); displayError('FILE PIANO DIETA RIMOSSO.'); },
+
+        addDietLog: function(meal, calories) {
+          if (meal.trim() === '' || isNaN(parseInt(calories))) return displayError('DATI DIETA NON VALIDI.');
+          state.data.diet.push({ id: Date.now(), date: getTodayDateString(), meal: meal.toUpperCase(), calories: parseInt(calories) });
+          saveAppState();
+          render();
+        },
+        removeDietLog: function(id) { state.data.diet = state.data.diet.filter(d => d.id !== id); saveAppState(); render(); },
+
+        markDietCompleted: function() {
+          const today = getTodayDateString();
+          if (!state.data.dailyCompliance[today]) state.data.dailyCompliance[today] = { habits:false, workout:false, diet:false };
+          state.data.dailyCompliance[today].diet = true;
+          saveAppState();
+          render();
+        },
+
+        saveMeasurements: function(weight, height, age, gender, waist, hips, chest, bicep, thigh) {
+          const rawValues = { weight, height, age, gender, waist, hips, chest, bicep, thigh };
+          const parsedValues = {};
+          for (const key in rawValues) {
+            const value = key === 'gender' ? rawValues[key].toUpperCase() : parseFloat(rawValues[key]);
+            if (!value || (typeof value === 'number' && (isNaN(value) || value <= 0))) {
+              return displayError(`VALORE NON VALIDO PER ${key.toUpperCase()}.`);
+            }
+            parsedValues[key] = value;
+          }
+          function calculateBodyMetrics(weight, height, age, gender) {
+            if (weight <= 0 || height <= 0) return { bmi:0, bodyFat:0, classification:'DATI INSUFFICIENTI' };
+            const heightM = height / 100;
+            const bmi = weight / (heightM * heightM);
+            let bodyFat = 0;
+            const genderFactor = gender === 'UOMO' ? 1 : 0;
+            if (age > 0) {
+              bodyFat = (1.20 * bmi) + (0.23 * age) - (10.8 * genderFactor) - 5.4;
+              bodyFat = Math.max(5, bodyFat);
+            }
+            let classification = 'CLASSIFICAZIONE BMI: ';
+            if (bmi < 18.5) classification += 'SOTTOPESO';
+            else if (bmi < 25) classification += 'NORMOPESO';
+            else if (bmi < 30) classification += 'SOVRAPPESO';
+            else classification += 'OBESITÀ';
+            return { bmi: bmi.toFixed(2), bodyFat: bodyFat > 0 ? bodyFat.toFixed(1) : 'N/D (MANCA ETÀ)', classification };
+          }
+          function calculateWHR(waist, hips, gender) {
+            if (waist <= 0 || hips <= 0) return { whr:0, risk:'DATI INSUFFICIENTI' };
+            const whr = waist / hips;
+            let risk = 'RISCHIO CARDIOVASCOLARE: ';
+            if (gender === 'UOMO') {
+              if (whr >= 1.0) risk += 'ALTO';
+              else if (whr >= 0.9) risk += 'MODERATO';
+              else risk += 'BASSO';
+            } else {
+              if (whr >= 0.85) risk += 'ALTO';
+              else if (whr >= 0.8) risk += 'MODERATO';
+              else risk += 'BASSO';
+            }
+            return { whr: whr.toFixed(2), risk };
+          }
+          const metrics = calculateBodyMetrics(parsedValues.weight, parsedValues.height, parsedValues.age, parsedValues.gender);
+          const whrMetrics = calculateWHR(parsedValues.waist, parsedValues.hips, parsedValues.gender);
+          const newMeasurement = { id: Date.now(), date: getTodayDateString(), raw: parsedValues, calculated: { ...metrics, ...whrMetrics } };
+          state.data.measurementsLog.push(newMeasurement);
+          saveAppState();
+          displayError('NUOVA MISURAZIONE SALVATA!');
+          render();
+        },
+
+        deleteMeasurement: function(id) { state.data.measurementsLog = state.data.measurementsLog.filter(log => log.id !== id); saveAppState(); displayError('MISURAZIONE ELIMINATA.'); render(); },
+
+        handleSleepToggle: function() {
+          const now = Date.now();
+          const today = getTodayDateString();
+          if (!state.sleepStartTimestamp) {
+            state.sleepStartTimestamp = now;
+            if (state.sleepTimerIntervalId) clearInterval(state.sleepTimerIntervalId);
+            state.sleepTimerIntervalId = setInterval(() => { render(); }, 1000);
+            displayError('CALCOLO SONNO AVVIATO.');
+            saveAppState();
+          } else {
+            if (state.sleepTimerIntervalId) { clearInterval(state.sleepTimerIntervalId); state.sleepTimerIntervalId = null; }
+            const startTime = state.sleepStartTimestamp;
+            const durationMs = now - startTime;
+            const durationSeconds = Math.round(durationMs / 1000);
+            const hypnogramData = generateHypnogramData(durationSeconds);
+            const phases = hypnogramData.reduce((acc, segment) => {
+              const stageKey = { 'VEGLIA':'veglia','LEGGERO':'leggero','PROFONDO':'profondo','REM':'rem' }[segment.stage];
+              if (stageKey) acc[stageKey] += segment.duration;
+              return acc;
+            }, { veglia:0, rem:0, leggero:0, profondo:0 });
+            if (!state.data.dailyCompliance[today]) state.data.dailyCompliance[today] = { habits:false, workout:false, diet:false };
+            const sleepRecord = { duration: durationSeconds, phases: phases, hypnogram: hypnogramData };
+            state.data.dailyCompliance[today].sleepData = sleepRecord;
+            state.data.dailyCompliance[today].sleep = true;
+            state.sleepStartTimestamp = null;
+            saveAppState();
+            const durationHours = (durationSeconds / 3600).toFixed(1);
+            displayError(`SONNO REGISTRATO! DURATA: ${durationHours} ORE.`);
+          }
+          render();
+        }
+
+      }; // end window.app
+
+      // --- RENDER / UI FUNCTIONS ---
+
+      function generateHypnogramData(totalSeconds) {
+        if (totalSeconds < 300) return [];
+        const data = [];
+        let secondsElapsed = 0;
+        const WAKE_TIME_INITIAL = 60 * (Math.random() * 5 + 2);
+        const CYCLE_DURATION = 60 * 90;
+        const initialWakeDuration = Math.min(WAKE_TIME_INITIAL, totalSeconds);
+        data.push({ stage: 'VEGLIA', duration: initialWakeDuration });
+        secondsElapsed += initialWakeDuration;
+        while (secondsElapsed < totalSeconds) {
+          const remainingSleepTime = totalSeconds - secondsElapsed;
+          if (remainingSleepTime <= 0) break;
+          const lightSleep1 = CYCLE_DURATION * 0.45;
+          const deepSleep = CYCLE_DURATION * 0.20;
+          const lightSleep2 = CYCLE_DURATION * 0.10;
+          const remSleep = CYCLE_DURATION * 0.25;
+          const addPhase = (stage, duration) => {
+            if (secondsElapsed < totalSeconds) {
+              const timeToAdd = Math.min(duration, totalSeconds - secondsElapsed);
+              data.push({ stage: stage, duration: timeToAdd });
+              secondsElapsed += timeToAdd;
+            }
+          };
+          addPhase('LEGGERO', lightSleep1);
+          addPhase('PROFONDO', deepSleep);
+          addPhase('LEGGERO', lightSleep2);
+          addPhase('REM', remSleep);
+        }
+        if (data.length < 2) return data;
+        const mergedData = [data[0]];
+        for (let i = 1; i < data.length; i++) {
+          if (data[i].stage === mergedData[mergedData.length - 1].stage) mergedData[mergedData.length - 1].duration += data[i].duration;
+          else mergedData.push(data[i]);
+        }
+        return mergedData;
+      }
+
+      function renderHypnogram(hypnogramData, totalSeconds) {
+        if (!hypnogramData || hypnogramData.length === 0 || totalSeconds <= 0) return '';
+        const stageColors = { 'VEGLIA': 'bg-yellow-400', 'REM': 'bg-purple-500', 'LEGGERO': 'bg-sky-400', 'PROFONDO': 'bg-blue-700' };
+        const segments = hypnogramData.map(segment => {
+          const widthPercentage = (segment.duration / totalSeconds) * 100;
+          return `<div class="${stageColors[segment.stage]} h-full" style="width: ${widthPercentage}%" title="${segment.stage} - ${Math.round(segment.duration / 60)} min"></div>`;
+        }).join('');
+        const legend = Object.keys(stageColors).map(stage => `<div class="flex items-center space-x-1"><div class="w-3 h-3 rounded-sm ${stageColors[stage]}"></div><span class="text-xs font-medium">${stage}</span></div>`).join('');
+        return `<div class="mt-4"><h4 class="text-md font-bold mb-2 text-gray-700">IPNOGRAMMA</h4><div class="w-full h-8 flex bg-gray-200 rounded-lg overflow-hidden border">${segments}</div><div class="flex justify-center space-x-4 mt-2">${legend}</div></div>`;
+      }
+
+      function renderNavbar() {
+        if (!state.isAuthenticated) return '';
+        const views = { summary: 'RIEPILOGO', habits: 'ABITUDINI', workout: 'ALLENAMENTO', diet: 'DIETA', measurements: 'MISURE' };
+        const navLinks = Object.keys(views).map(viewKey => `<button onclick="window.app.setView('${viewKey}')" class="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg transition ${state.view === viewKey ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}">${views[viewKey]}</button>`).join('');
+        return `<nav class="p-4 bg-white shadow-xl rounded-xl mb-6"><div class="flex justify-between items-center"><span class="text-xl font-bold text-blue-600">LIFE DESIGNER</span><button onclick="window.app.toggleMenu()" class="md:hidden p-2 rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none">${state.isMenuOpen ? '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>' : '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>'}</button><div class="hidden md:flex items-center space-x-2">${navLinks}<button onclick="window.app.logout()" class="px-3 py-2 text-sm font-semibold text-red-600 hover:text-red-800 transition">LOGOUT</button></div></div><div id="mobile-menu" class="${state.isMenuOpen ? 'block' : 'hidden'} md:hidden mt-4 pt-4 border-t space-y-2">${navLinks}<button onclick="window.app.logout()" class="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg text-red-600 hover:bg-red-50 transition">LOGOUT</button></div></nav>`;
+      }
+
+      function renderLogin() {
+  return `<div class="card mt-10">
+    <h2 class="text-2xl font-bold mb-6 text-center">LOGIN</h2>
+    <form onsubmit="event.preventDefault(); window.app.login(this.username.value, this.password.value);" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium">NOME UTENTE</label>
+        <input type="text" name="username" required class="w-full p-3 border rounded-lg">
+      </div>
+      <div>
+        <label class="block text-sm font-medium">PASSWORD</label>
+        <input type="password" name="password" required class="w-full p-3 border rounded-lg">
+      </div>
+      <button type="submit" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">ACCEDI</button>
+    </form>
+    <p class="text-center mt-4 text-sm">NON HAI UN ACCOUNT?
+      <button onclick="window.app.setView('register')" class="text-blue-600 font-semibold">REGISTRATI</button>
+    </p>
+  </div>`;
+}
+
+function renderRegister() {
+  return `<div class="card mt-10">
+    <h2 class="text-2xl font-bold mb-6 text-center">REGISTRAZIONE</h2>
+    <form onsubmit="event.preventDefault(); window.app.register(this.username.value, this.password.value, this.userType.value);" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium">NUOVO NOME UTENTE</label>
+        <input type="text" name="username" required class="w-full p-3 border rounded-lg">
+      </div>
+      <div>
+        <label class="block text-sm font-medium">NUOVA PASSWORD</label>
+        <input type="password" name="password" required class="w-full p-3 border rounded-lg">
+      </div>
+      <div>
+        <label class="block text-sm font-medium">TIPO UTENTE</label>
+        <select name="userType" class="w-full p-3 border rounded-lg">
+          <option value="user">Utente</option>
+          <option value="pro">Professionista della salute</option>
+        </select>
+      </div>
+      <button type="submit" class="w-full p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">REGISTRATI</button>
+    </form>
+    <p class="text-center mt-4 text-sm">HAI GIÀ UN ACCOUNT?
+      <button onclick="window.app.setView('login')" class="text-blue-600 font-semibold">ACCEDI</button>
+    </p>
+  </div>`;
+}
+
+
+      
+      function renderWizard() {
+        let stepContent = '';
+        switch (state.wizardStep) {
+          case 1: stepContent = renderWizardMeasurementsStep(); break;
+          case 2: stepContent = renderWizardHabitsStep(); break;
+          case 3: stepContent = renderWizardWorkoutStep(); break;
+          case 4: stepContent = renderWizardDietStep(); break;
+          default: state.view = 'summary'; render(); return;
+        }
+        return `<div class="card mt-10"><h2 class="text-2xl font-bold mb-2 text-center">CONFIGURAZIONE GUIDATA</h2><p class="text-center text-sm text-gray-500 mb-6">PASSO ${state.wizardStep} DI 4</p>${stepContent}</div>`;
+      }
+      
+      function renderWizardMeasurementsStep() {
+        return `<h3 class="text-xl font-bold mb-4">INSERISCI LE TUE MISURE</h3>
+        <form onsubmit="event.preventDefault(); window.app.saveMeasurements(this.weight.value, this.height.value, this.age.value, this.gender.value, this.waist.value, this.hips.value, this.chest.value, this.bicep.value, this.thigh.value); window.app.nextWizardStep();" class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <input type="number" name="weight" placeholder="PESO (KG)" required step="0.1" class="w-full p-3 border rounded-lg">
+            <input type="number" name="height" placeholder="ALTEZZA (CM)" required class="w-full p-3 border rounded-lg">
+            <input type="number" name="age" placeholder="ETÀ" required class="w-full p-3 border rounded-lg">
+            <select name="gender" required class="w-full p-3 border rounded-lg">
+                <option value="UOMO">UOMO</option>
+                <option value="DONNA">DONNA</option>
+            </select>
+          </div>
+          <h4 class="font-bold mt-4">CIRCONFERENZE (CM)</h4>
+          <div class="grid grid-cols-3 gap-2">
+            <input type="number" name="waist" placeholder="VITA" required step="0.1" class="w-full p-3 border rounded-lg">
+            <input type="number" name="hips" placeholder="FIANCHI" required step="0.1" class="w-full p-3 border rounded-lg">
+            <input type="number" name="chest" placeholder="PETTO" required step="0.1" class="w-full p-3 border rounded-lg">
+            <input type="number" name="bicep" placeholder="BRACCIO" required step="0.1" class="w-full p-3 border rounded-lg">
+            <input type="number" name="thigh" placeholder="COSCIA" required step="0.1" class="w-full p-3 border rounded-lg">
+          </div>
+          <button type="submit" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 mt-4">SALVA E CONTINUA</button>
+          <button type="button" onclick="window.app.nextWizardStep()" class="w-full p-3 bg-gray-300 text-gray-800 font-bold rounded-lg hover:bg-gray-400 mt-2">SALTA</button>
+        </form>`;
+      }
+      
+      function renderWizardHabitsStep() {
+        const habitsListHTML = state.data.habits.map(h => 
+          `<li class="flex items-center justify-between py-2 border-b last:border-b-0">
+              <span class="font-semibold text-gray-800">${h.description}</span>
+              <button onclick="window.app.removeHabit(${h.id})" class="text-red-500 hover:text-red-700">RIMUOVI</button>
+          </li>`
+        ).join('');
+      
+        return `<h3 class="text-xl font-bold mb-4">IMPOSTA LE TUE ABITUDINI</h3>
+        <p class="text-sm text-gray-600 mb-4 no-uppercase">Aggiungi le buone abitudini che vuoi monitorare ogni giorno (es. 'LEGGERE 10 PAGINE', 'MEDITARE 5 MINUTI').</p>
+        
+        <div class="card mb-4 bg-gray-50">
+            <h4 class="font-bold mb-2">ABITUDINI AGGIUNTE:</h4>
+            <ul>${habitsListHTML || `<p class="text-gray-500 text-sm">Nessuna abitudine ancora.</p>`}</ul>
+        </div>
+        
+        <form onsubmit="event.preventDefault(); window.app.addHabit(this.description.value); this.reset();" class="space-y-4">
+          <input type="text" name="description" required class="w-full p-3 border rounded-lg" placeholder="ES. BERE 2L D'ACQUA">
+          <button type="submit" class="w-full p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">AGGIUNGI ABITUDINE</button>
+        </form>
+        
+        <button type="button" onclick="window.app.nextWizardStep()" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 mt-4">CONTINUA</button>
+        <button type="button" onclick="window.app.nextWizardStep()" class="w-full p-3 bg-gray-300 text-gray-800 font-bold rounded-lg hover:bg-gray-400 mt-2">SALTA</button>`;
+      }
+      
+      function renderWizardWorkoutStep() {
+        const workoutsByDay = state.data.workout.reduce((acc, w) => {
+          if (!acc[w.day]) acc[w.day] = [];
+          acc[w.day].push(w);
+          return acc;
+        }, {});
+      
+        const workoutDaysHTML = Object.keys(workoutsByDay).sort().map(day => {
+          const exercisesHTML = workoutsByDay[day].map(w =>
+            `<li class="py-1 border-b last:border-b-0 text-sm">
+                <div class="flex justify-between items-center"><span class="font-semibold">${w.exercise.toUpperCase()}</span></div>
+                <p class="text-xs text-gray-600">SERIE: ${w.sets} | REP: ${w.reps} | CARICO: ${w.load}</p>
+            </li>`
+          ).join('');
+          return `<div class="mb-2"><h5 class="text-md font-bold text-blue-600">${day}</h5><ul>${exercisesHTML}</ul></div>`;
+        }).join('');
+      
+        return `<h3 class="text-xl font-bold mb-4">CREA IL TUO PIANO DI ALLENAMENTO</h3>
+        <p class="text-sm text-gray-600 mb-4 no-uppercase">Aggiungi i tuoi esercizi per creare il tuo piano base.</p>
+        
+        <div class="card mb-4 bg-gray-50">
+            <h4 class="font-bold mb-2">PIANO ATTUALE:</h4>
+            <div class="space-y-3">${workoutDaysHTML || `<p class="text-gray-500 text-sm">Nessun esercizio ancora.</p>`}</div>
+        </div>
+        
+        <form onsubmit="event.preventDefault(); window.app.addWorkout(this.day.value, this.exercise.value, this.sets.value, this.reps.value, this.load.value); this.reset();" class="space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+                <input type="text" name="day" placeholder="GIORNO (ES. A, B, LUNEDÌ)" required class="w-full p-3 border rounded-lg">
+                <input type="text" name="exercise" placeholder="NOME ESERCIZIO" required class="w-full p-3 border rounded-lg">
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+                <input type="number" name="sets" placeholder="SERIE" class="w-full p-3 border rounded-lg">
+                <input type="number" name="reps" placeholder="REP" class="w-full p-3 border rounded-lg">
+                <input type="text" name="load" placeholder="CARICO (KG/N/D)" class="w-full p-3 border rounded-lg">
+            </div>
+            <button type="submit" class="w-full p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">AGGIUNGI ESERCIZIO</button>
+        </form>
+        
+        <button type="button" onclick="window.app.nextWizardStep()" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 mt-4">CONTINUA</button>
+        <button type="button" onclick="window.app.nextWizardStep()" class="w-full p-3 bg-gray-300 text-gray-800 font-bold rounded-lg hover:bg-gray-400 mt-2">SALTA</button>`;
+      }
+      
+      function renderWizardDietStep() {
+        return `<h3 class="text-xl font-bold mb-4">IMPOSTA L'OBIETTIVO CALORICO</h3>
+        <p class="text-sm text-gray-600 mb-4 no-uppercase">Imposta l'obiettivo calorico giornaliero per la tua dieta.</p>
+        
+        <div class="card mb-4 bg-gray-50">
+            <h4 class="font-bold mb-2">OBIETTIVO ATTUALE:</h4>
+            <span class="text-2xl font-bold text-blue-600">${state.data.dietPlan.targetCalories} KCAL</span>
+        </div>
+        
+        <form onsubmit="event.preventDefault(); window.app.setCaloricTarget(this.calories.value); window.app.nextWizardStep();" class="space-y-4">
+          <input type="number" name="calories" placeholder="KCAL OBIETTIVO" required class="w-full p-3 border rounded-lg" value="${state.data.dietPlan.targetCalories}">
+          <button type="submit" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">SALVA E CONTINUA</button>
+        </form>
+        
+        <p class="text-sm text-gray-600 mt-6 no-uppercase">Puoi aggiungere il piano pasti e i file della dieta nella sezione DIETA dopo la configurazione.</p>
+        <button type="button" onclick="window.app.nextWizardStep()" class="w-full p-3 bg-gray-300 text-gray-800 font-bold rounded-lg hover:bg-gray-400 mt-2">SALTA</button>`;
+      }
+      
+      function renderHabitsDashboard() {
+        const today = getTodayDateString();
+        const complianceToday = state.data.dailyCompliance[today] || { habits:false };
+        
+        const habitsListHTML = state.data.habits.map(h => 
+          `<li class="flex items-center justify-between py-3 border-b last:border-b-0">
+              <div class="flex items-center space-x-3">
+                  <input type="checkbox" id="habit-${h.id}" class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500" ${h.completed ? 'checked' : ''} onchange="window.app.toggleHabitCompletion(${h.id})">
+                  <label for="habit-${h.id}" class="text-lg font-semibold text-gray-800">${h.description}</label>
+              </div>
+              <button onclick="window.app.removeHabit(${h.id})" class="text-red-500 hover:text-red-700 transition">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m10 0h-12"></path></svg>
+              </button>
+          </li>`
+        ).join('');
+        
+        const overallCompliance = state.data.habits.length > 0 && complianceToday.habits 
+            ? '<span class="text-green-600 font-bold">COMPLETATA</span>' 
+            : '<span class="text-orange-500 font-bold">IN CORSO</span>';
+        
+        return `<div class="card"><h2 class="text-2xl font-bold mb-4 text-blue-600">ABITUDINI (${state.data.habits.length})</h2><div class="mb-6"><h4 class="text-lg font-semibold text-gray-700">STATO GIORNALIERO: ${overallCompliance}</h4></div><div class="card mb-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">CHECKLIST</h3><ul>${habitsListHTML || `<p class="text-gray-500 p-2">Aggiungi le tue abitudini per iniziare il monitoraggio.</p>`}</ul></div><h3 class="text-xl font-bold mb-4">AGGIUNGI NUOVA ABITUDINE</h3><form onsubmit="event.preventDefault(); window.app.addHabit(this.description.value); this.reset();" class="space-y-4"><input type="text" name="description" required class="w-full p-3 border rounded-lg" placeholder="ES. SCRIVERE UN DIARIO"><button type="submit" class="w-full p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">AGGIUNGI</button></form></div>`;
+      }
+
+      function renderWorkoutDashboard() {
+        const today = getTodayDateString();
+        const complianceToday = state.data.dailyCompliance[today] || { workout:false };
+        
+        const isCompleted = complianceToday.workout;
+        const completeButton = isCompleted 
+            ? `<button disabled class="w-full p-3 bg-green-600 text-white font-bold rounded-lg mt-4 opacity-50 cursor-not-allowed">ALLENAMENTO COMPLETATO</button>`
+            : `<button onclick="window.app.markWorkoutCompleted()" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 mt-4">MARCA COME COMPLETATO</button>`;
+            
+        const workoutsByDay = state.data.workout.reduce((acc, w) => {
+          if (!acc[w.day]) acc[w.day] = [];
+          acc[w.day].push(w);
+          return acc;
+        }, {});
+      
+        const workoutDaysHTML = Object.keys(workoutsByDay).sort().map(day => {
+          const exercisesHTML = workoutsByDay[day].map(w => {
+            if (state.editingWorkoutId === w.id) {
+                // Editing form for a single exercise
+                return `<li class="py-2 border-b last:border-b-0 text-sm bg-blue-50 p-2 rounded-lg mt-2">
+                    <form onsubmit="event.preventDefault(); window.app.updateWorkout(${w.id}, this.day.value, this.exercise.value, this.sets.value, this.reps.value, this.load.value);">
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <input type="text" name="day" value="${w.day}" placeholder="GIORNO" required class="w-full p-2 border rounded-lg text-xs">
+                            <input type="text" name="exercise" value="${w.exercise}" placeholder="ESERCIZIO" required class="w-full p-2 border rounded-lg text-xs">
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="number" name="sets" value="${w.sets}" placeholder="SERIE" class="w-full p-2 border rounded-lg text-xs">
+                            <input type="number" name="reps" value="${w.reps}" placeholder="REP" class="w-full p-2 border rounded-lg text-xs">
+                            <input type="text" name="load" value="${w.load}" placeholder="CARICO" class="w-full p-2 border rounded-lg text-xs">
+                        </div>
+                        <div class="flex justify-between mt-2">
+                            <button type="submit" class="text-green-600 hover:text-green-800 font-semibold text-xs">SALVA</button>
+                            <button type="button" onclick="window.app.cancelEditingWorkout()" class="text-gray-500 hover:text-gray-700 text-xs">ANNULLA</button>
+                        </div>
+                    </form>
+                </li>`;
+            }
+            // Read-only exercise
+            return `<li class="py-2 border-b last:border-b-0 text-sm">
+                <div class="flex justify-between items-center">
+                    <span class="font-semibold">${w.exercise.toUpperCase()}</span>
+                    <div class="flex space-x-2">
+                        <button onclick="window.app.startEditingWorkout(${w.id})" class="text-blue-500 hover:text-blue-700 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-7l4 4m-4-4l-9 9m9-9l9 9"></path></svg></button>
+                        <button onclick="window.app.removeWorkout(${w.id})" class="text-red-500 hover:text-red-700 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m10 0h-12"></path></svg></button>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-600">GIORNO: ${w.day} | SERIE: ${w.sets} | REP: ${w.reps} | CARICO: ${w.load}</p>
+            </li>`;
+          }).join('');
+          return `<div class="mb-4"><h4 class="text-xl font-bold text-blue-600">${day}</h4><ul class="space-y-1">${exercisesHTML}</ul></div>`;
+        }).join('');
+        
+        const uploadedFilesHTML = state.data.uploadedWorkoutPlans.map(p => 
+            `<li class="flex justify-between items-center py-2 border-b last:border-b-0">
+                <span class="font-semibold text-gray-800 cursor-pointer" onclick="window.app.viewFile(${p.id}, 'workout')">${p.name} (${p.type.split('/')[1]?.toUpperCase() || 'FILE'})</span>
+                <button onclick="window.app.removeUploadedWorkoutFile(${p.id})" class="text-red-500 hover:text-red-700">RIMUOVI</button>
+            </li>`
+        ).join('');
+        
+        let fileViewerHTML = '';
+        if (state.viewingFile && state.viewingFile.type === 'workout') {
+            const isText = state.viewingFile.dataUrl.startsWith('data:text/') || state.viewingFile.name.endsWith('.TXT');
+            let contentDisplay;
+            if (isText) {
+                const textContent = decodeBase64Text(state.viewingFile.dataUrl);
+                contentDisplay = `<div class="code-example">${textContent}</div>`;
+            } else {
+                contentDisplay = `<p class="text-red-500">Impossibile mostrare l'anteprima per il tipo di file ${state.viewingFile.type.toUpperCase()}.</p>`;
+            }
+            fileViewerHTML = `<div class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4" onclick="window.app.closeFileViewer()">
+                <div class="bg-white card w-full max-w-xl max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                    <h3 class="text-xl font-bold mb-2">${state.viewingFile.name}</h3>
+                    <p class="text-sm text-gray-500 mb-4">ANTEPRIMA FILE</p>
+                    ${contentDisplay}
+                    <div class="flex justify-between mt-4">
+                        <a href="${state.viewingFile.dataUrl}" download="${state.viewingFile.name.toLowerCase()}" class="p-2 bg-green-500 text-white font-bold rounded-lg text-sm">SCARICA</a>
+                        <button onclick="window.app.setView('workoutImport'); window._tempTextContent='${isText ? btoa(unescape(encodeURIComponent(decodeBase64Text(state.viewingFile.dataUrl)))) : ''}'" class="p-2 bg-blue-500 text-white font-bold rounded-lg text-sm disabled:opacity-50" ${isText ? '' : 'disabled'}>IMPORTA TESTO</button>
+                        <button onclick="window.app.closeFileViewer()" class="p-2 bg-red-500 text-white font-bold rounded-lg text-sm">CHIUDI</button>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        return `<div class="card">${fileViewerHTML}<h2 class="text-2xl font-bold mb-4 text-blue-600">PIANO DI ALLENAMENTO</h2>${completeButton}<div class="card mt-6 mb-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">ESERCIZI (${state.data.workout.length})</h3><div class="space-y-4">${workoutDaysHTML || `<p class="text-gray-500 p-2">Nessun esercizio nel piano. Aggiungine uno sotto.</p>`}</div><button onclick="window.app.clearWorkoutPlan()" class="mt-4 p-2 w-full text-sm bg-red-100 text-red-700 font-semibold rounded-lg hover:bg-red-200">CANCELLA TUTTO</button></div><h3 class="text-xl font-bold mb-4">AGGIUNGI ESERCIZIO</h3><form onsubmit="event.preventDefault(); window.app.addWorkout(this.day.value, this.exercise.value, this.sets.value, this.reps.value, this.load.value); this.reset();" class="space-y-2"><div class="grid grid-cols-2 gap-2"><input type="text" name="day" placeholder="GIORNO (ES. A, B)" required class="w-full p-3 border rounded-lg"><input type="text" name="exercise" placeholder="NOME ESERCIZIO" required class="w-full p-3 border rounded-lg"></div><div class="grid grid-cols-3 gap-2"><input type="number" name="sets" placeholder="SERIE" class="w-full p-3 border rounded-lg"><input type="number" name="reps" placeholder="REP" class="w-full p-3 border rounded-lg"><input type="text" name="load" placeholder="CARICO (KG/N/D)" class="w-full p-3 border rounded-lg"></div><button type="submit" class="w-full p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 mt-4">AGGIUNGI</button></form><div class="card mt-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">CARICA PIANO / FILE</h3><input type="file" onchange="window.app.uploadWorkoutFile(event)" accept=".pdf,.doc,.docx,.txt,.json" class="w-full p-3 border rounded-lg bg-white text-gray-700 text-sm"><button onclick="window.app.setView('workoutImport')" class="mt-2 p-3 w-full bg-blue-100 text-blue-700 font-bold rounded-lg hover:bg-blue-200">INCOLLA TESTO / IMPORTA</button></div><div class="card mt-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">FILE CARICATI (${state.data.uploadedWorkoutPlans.length})</h3><ul>${uploadedFilesHTML || `<p class="text-gray-500 p-2 text-sm">Nessun file caricato.</p>`}</ul></div></div>`;
+      }
+      
+      function renderWorkoutImport() {
+        // ... (function body for renderWorkoutImport is here, unchanged)
+        return `<div class="card"><h2 class="text-2xl font-bold mb-4 text-blue-600">IMPORTA PIANO ALLENAMENTO</h2><p class="mb-4 text-gray-700 no-uppercase">Incolla il tuo piano di allenamento qui. Sono supportati i formati semplici (es. riga per riga), CSV (Giorno, Esercizio, Serie, Reps, Carico) o JSON array.</p><textarea id="workout-import-area" class="w-full p-4 border rounded-lg h-64 font-mono text-sm no-uppercase" placeholder="INCOLLA QUI IL TESTO DEL TUO PIANO..."></textarea><button onclick="window.app.importWorkoutPlan(document.getElementById('workout-import-area').value)" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 mt-4">IMPORTA PIANO</button><button onclick="window.app.setView('workout')" class="w-full p-3 bg-gray-300 text-gray-800 font-bold rounded-lg hover:bg-gray-400 mt-2">ANNULLA</button></div>`;
+      }
+
+      function renderDietDashboard() {
+        // ... (function body for renderDietDashboard is here, unchanged)
+        const today = getTodayDateString();
+        const complianceToday = state.data.dailyCompliance[today] || { diet:false };
+        
+        const isCompleted = complianceToday.diet;
+        const completeButton = isCompleted 
+            ? `<button disabled class="w-full p-3 bg-green-600 text-white font-bold rounded-lg mt-4 opacity-50 cursor-not-allowed">DIETA COMPLETATA</button>`
+            : `<button onclick="window.app.markDietCompleted()" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 mt-4">MARCA COME COMPLETATA</button>`;
+            
+        // Log Giornaliero
+        const todayDietLog = state.data.diet.filter(d => d.date === today);
+        const totalCalories = todayDietLog.reduce((sum, d) => sum + d.calories, 0);
+        const logHTML = todayDietLog.map(d => 
+            `<li class="flex justify-between items-center py-2 border-b last:border-b-0 text-sm">
+                <span class="font-semibold">${d.meal.toUpperCase()}</span>
+                <div class="flex items-center space-x-3">
+                    <span class="text-gray-700">${d.calories} KCAL</span>
+                    <button onclick="window.app.removeDietLog(${d.id})" class="text-red-500 hover:text-red-700 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m10 0h-12"></path></svg>
+                    </button>
+                </div>
+            </li>`
+        ).join('');
+        
+        // Piano Dieta Settimanale
+        const dayLabels = ['LUNEDÌ','MARTEDÌ','MERCOLEDÌ','GIOVEDÌ','VENERDÌ','SABATO','DOMENICA'];
+        const dietPlanHTML = state.data.dietPlan.plan.sort((a, b) => dayLabels.indexOf(a.day) - dayLabels.indexOf(b.day)).map((dayPlan, dayIndex) => {
+            const mealsHTML = dayPlan.meals.map((meal, mealIndex) => {
+                if (state.editingDietMeal && state.editingDietMeal.dayIndex === dayIndex && state.editingDietMeal.mealIndex === mealIndex) {
+                    // Editing form
+                    return `<li class="py-2 border-b last:border-b-0 text-sm bg-blue-50 p-2 rounded-lg mt-2">
+                        <form onsubmit="event.preventDefault(); window.app.updateDietMeal(${dayIndex}, ${mealIndex}, this.category.value, this.description.value, this.weight.value, this.type.value, this.calories.value);">
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <input type="text" name="category" value="${meal.category}" placeholder="TIPOLOGIA (COLAZIONE)" required class="w-full p-2 border rounded-lg text-xs">
+                                <input type="text" name="description" value="${meal.description}" placeholder="DESCRIZIONE (UOVA, PANE)" required class="w-full p-2 border rounded-lg text-xs">
+                            </div>
+                            <div class="grid grid-cols-3 gap-2">
+                                <input type="text" name="weight" value="${meal.weight}" placeholder="GRAMMATURA (150G)" required class="w-full p-2 border rounded-lg text-xs">
+                                <input type="text" name="type" value="${meal.type}" placeholder="ALTRO (RICETTA)" required class="w-full p-2 border rounded-lg text-xs">
+                                <input type="number" name="calories" value="${meal.calories}" placeholder="KCAL" required class="w-full p-2 border rounded-lg text-xs">
+                            </div>
+                            <div class="flex justify-between mt-2">
+                                <button type="submit" class="text-green-600 hover:text-green-800 font-semibold text-xs">SALVA</button>
+                                <button type="button" onclick="window.app.cancelEditingDietMeal()" class="text-gray-500 hover:text-gray-700 text-xs">ANNULLA</button>
+                            </div>
+                        </form>
+                    </li>`;
+                }
+                // Read-only meal
+                return `<li class="py-2 border-b last:border-b-0 text-sm">
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold">${meal.category}: ${meal.description}</span>
+                        <div class="flex space-x-2">
+                            <button onclick="window.app.startEditingDietMeal(${dayIndex}, ${mealIndex})" class="text-blue-500 hover:text-blue-700 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-7l4 4m-4-4l-9 9m9-9l9 9"></path></svg></button>
+                            <button onclick="window.app.removeMealFromPlan(${dayIndex}, ${mealIndex})" class="text-red-500 hover:text-red-700 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m10 0h-12"></path></svg></button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-600">${meal.weight} (${meal.type}) | ${meal.calories} KCAL</p>
+                </li>`;
+            }).join('');
+            
+            const totalDayCalories = dayPlan.meals.reduce((sum, m) => sum + m.calories, 0);
+
+            return `<div class="mb-4"><h4 class="text-xl font-bold text-blue-600">${dayPlan.day} (${totalDayCalories} KCAL)</h4><ul class="space-y-1">${mealsHTML}</ul></div>`;
+        }).join('');
+        
+        const uploadedFilesHTML = state.data.uploadedDietPlans.map(p => 
+            `<li class="flex justify-between items-center py-2 border-b last:border-b-0">
+                <span class="font-semibold text-gray-800 cursor-pointer" onclick="window.app.viewFile(${p.id}, 'diet')">${p.name} (${p.type.split('/')[1]?.toUpperCase() || 'FILE'})</span>
+                <button onclick="window.app.removeUploadedDietFile(${p.id})" class="text-red-500 hover:text-red-700">RIMUOVI</button>
+            </li>`
+        ).join('');
+        
+        let fileViewerHTML = '';
+        if (state.viewingFile && state.viewingFile.type === 'diet') {
+            const isText = state.viewingFile.dataUrl.startsWith('data:text/') || state.viewingFile.name.endsWith('.TXT') || state.viewingFile.name.endsWith('.CSV');
+            let contentDisplay;
+            if (isText) {
+                const textContent = decodeBase64Text(state.viewingFile.dataUrl);
+                contentDisplay = `<div class="code-example">${textContent}</div>`;
+            } else {
+                contentDisplay = `<p class="text-red-500">Impossibile mostrare l'anteprima per il tipo di file ${state.viewingFile.type.toUpperCase()}.</p>`;
+            }
+            fileViewerHTML = `<div class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4" onclick="window.app.closeFileViewer()">
+                <div class="bg-white card w-full max-w-xl max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                    <h3 class="text-xl font-bold mb-2">${state.viewingFile.name}</h3>
+                    <p class="text-sm text-gray-500 mb-4">ANTEPRIMA FILE</p>
+                    ${contentDisplay}
+                    <div class="flex justify-between mt-4">
+                        <a href="${state.viewingFile.dataUrl}" download="${state.viewingFile.name.toLowerCase()}" class="p-2 bg-green-500 text-white font-bold rounded-lg text-sm">SCARICA</a>
+                        <button onclick="window.app.setView('dietImport'); window._tempTextContent='${isText ? btoa(unescape(encodeURIComponent(decodeBase64Text(state.viewingFile.dataUrl)))) : ''}'" class="p-2 bg-blue-500 text-white font-bold rounded-lg text-sm disabled:opacity-50" ${isText ? '' : 'disabled'}>IMPORTA TESTO</button>
+                        <button onclick="window.app.closeFileViewer()" class="p-2 bg-red-500 text-white font-bold rounded-lg text-sm">CHIUDI</button>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        return `<div class="card">${fileViewerHTML}<h2 class="text-2xl font-bold mb-4 text-blue-600">DIETA (${state.data.dietPlan.targetCalories} KCAL OBIETTIVO)</h2>${completeButton}<div class="card mt-6 mb-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">LOG ALIMENTARE GIORNALIERO (${totalCalories} KCAL)</h3><ul>${logHTML || `<p class="text-gray-500 p-2">Nessun pasto registrato oggi.</p>`}</ul><h3 class="text-xl font-bold mb-4 mt-6">AGGIUNGI PASTO</h3><form onsubmit="event.preventDefault(); window.app.addDietLog(this.meal.value, this.calories.value); this.reset();" class="space-y-4"><input type="text" name="meal" placeholder="PASTO (ES. PRANZO)" required class="w-full p-3 border rounded-lg"><input type="number" name="calories" placeholder="KCAL" required class="w-full p-3 border rounded-lg"><button type="submit" class="w-full p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">REGISTRA</button></form></div><div class="card mt-6 mb-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">PIANO DIETA SETTIMANALE (${state.data.dietPlan.plan.length} giorni)</h3><p class="text-sm text-gray-500 mb-4 no-uppercase">Visualizza e gestisci il piano alimentare dettagliato.</p><div class="space-y-4">${dietPlanHTML || `<p class="text-gray-500 p-2">Nessun piano dieta salvato. Aggiungine uno sotto.</p>`}</div><button onclick="window.app.clearDietPlan()" class="mt-4 p-2 w-full text-sm bg-red-100 text-red-700 font-semibold rounded-lg hover:bg-red-200">CANCELLA PIANO</button></div><h3 class="text-xl font-bold mb-4">AGGIUNGI PASTO AL PIANO</h3><form onsubmit="event.preventDefault(); window.app.addMealToPlan(this.day.value, this.category.value, this.description.value, this.weight.value, this.type.value, this.calories.value); this.reset();" class="space-y-2"><select name="day" required class="w-full p-3 border rounded-lg"><option value="" disabled selected>SELEZIONA GIORNO</option><option value="LUNEDÌ">LUNEDÌ</option><option value="MARTEDÌ">MARTEDÌ</option><option value="MERCOLEDÌ">MERCOLEDÌ</option><option value="GIOVEDÌ">GIOVEDÌ</option><option value="VENERDÌ">VENERDÌ</option><option value="SABATO">SABATO</option><option value="DOMENICA">DOMENICA</option></select><input type="text" name="category" placeholder="TIPOLOGIA PASTO (ES. COLAZIONE)" required class="w-full p-3 border rounded-lg"><input type="text" name="description" placeholder="DESCRIZIONE CIBO (ES. UOVA, PANE)" required class="w-full p-3 border rounded-lg"><div class="grid grid-cols-2 gap-2"><input type="text" name="weight" placeholder="GRAMMATURA (ES. 150G)" required class="w-full p-3 border rounded-lg"><input type="text" name="type" placeholder="TIPOLOGIA (ES. RICETTA/INTEGRATORE)" required class="w-full p-3 border rounded-lg"></div><input type="number" name="calories" placeholder="KCAL PASTO" required class="w-full p-3 border rounded-lg"><button type="submit" class="w-full p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 mt-4">AGGIUNGI AL PIANO</button></form><div class="card mt-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">CARICA PIANO / FILE</h3><input type="file" onchange="window.app.uploadDietFile(event)" accept=".pdf,.doc,.docx,.txt,.csv" class="w-full p-3 border rounded-lg bg-white text-gray-700 text-sm"><button onclick="window.app.setView('dietImport')" class="mt-2 p-3 w-full bg-blue-100 text-blue-700 font-bold rounded-lg hover:bg-blue-200">INCOLLA TESTO / IMPORTA</button></div><div class="card mt-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">FILE CARICATI (${state.data.uploadedDietPlans.length})</h3><ul>${uploadedFilesHTML || `<p class="text-gray-500 p-2 text-sm">Nessun file caricato.</p>`}</ul></div></div>`;
+      }
+      
+      function renderDietImport() {
+        // ... (function body for renderDietImport is here, unchanged)
+        return `<div class="card"><h2 class="text-2xl font-bold mb-4 text-blue-600">IMPORTA PIANO DIETA</h2><p class="mb-4 text-gray-700 no-uppercase">Incolla il tuo piano di dieta qui in formato CSV: GIORNO, TIPOLOGIA, DESCRIZIONE, GRAMMATURA, ALTRO, KCAL (es. LUNEDÌ, PRANZO, POLLO, 150G, PETTO, 300).</p><textarea id="diet-import-area" class="w-full p-4 border rounded-lg h-64 font-mono text-sm no-uppercase" placeholder="INCOLLA QUI IL TESTO DEL TUO PIANO..."></textarea><button onclick="window.app.importDietPlan(document.getElementById('diet-import-area').value)" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 mt-4">IMPORTA PIANO</button><button onclick="window.app.setView('diet')" class="w-full p-3 bg-gray-300 text-gray-800 font-bold rounded-lg hover:bg-gray-400 mt-2">ANNULLA</button></div>`;
+      }
+      
+      function renderMeasurementsDashboard() {
+        // ... (function body for renderMeasurementsDashboard is here, unchanged)
+        const logHTML = state.data.measurementsLog.slice().reverse().map(log => {
+            const raw = log.raw;
+            const calc = log.calculated;
+            return `<li class="py-3 border-b last:border-b-0">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-lg font-bold text-blue-600">${log.date}</span>
+                    <button onclick="window.app.deleteMeasurement(${log.id})" class="text-red-500 hover:text-red-700 transition">ELIMINA</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                    <p><strong>PESO / ALTEZZA:</strong> ${raw.weight} KG / ${raw.height} CM</p>
+                    <p><strong>BMI:</strong> ${calc.bmi} (${calc.classification})</p>
+                    <p><strong>GRASSO:</strong> ${calc.bodyFat}%</p>
+                    <p><strong>WHR (VITA/FIANCHI):</strong> ${calc.whr} (${calc.risk})</p>
+                    <p class="col-span-2"><strong>CIRCONFERENZE:</strong> VITA ${raw.waist}, FIANCHI ${raw.hips}, PETTO ${raw.chest}, BRACCIO ${raw.bicep}, COSCIA ${raw.thigh}</p>
+                </div>
+            </li>`;
+        }).join('');
+        
+        const lastMeasurement = state.data.measurementsLog.length > 0
+            ? state.data.measurementsLog[state.data.measurementsLog.length - 1]
+            : null;
+        
+        return `<div class="card"><h2 class="text-2xl font-bold mb-4 text-blue-600">MISURE E PROGRESSI</h2><div class="card mb-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">ULTIMA MISURAZIONE</h3>${lastMeasurement ? `<div class="grid grid-cols-2 gap-2 text-gray-700"><p><strong>DATA:</strong> ${lastMeasurement.date}</p><p><strong>PESO:</strong> ${lastMeasurement.raw.weight} KG</p><p><strong>BMI:</strong> ${lastMeasurement.calculated.bmi}</p><p><strong>GRASSO:</strong> ${lastMeasurement.calculated.bodyFat}%</p><p class="col-span-2"><strong>CLASSIFICAZIONE:</strong> ${lastMeasurement.calculated.classification}</p></div>` : `<p class="text-gray-500">Nessuna misurazione salvata.</p>`}</div><h3 class="text-xl font-bold mb-4">SALVA NUOVA MISURA</h3><form onsubmit="event.preventDefault(); window.app.saveMeasurements(this.weight.value, this.height.value, this.age.value, this.gender.value, this.waist.value, this.hips.value, this.chest.value, this.bicep.value, this.thigh.value); this.reset();" class="space-y-4"><div class="grid grid-cols-2 gap-4"><input type="number" name="weight" placeholder="PESO (KG)" required step="0.1" class="w-full p-3 border rounded-lg"><input type="number" name="height" placeholder="ALTEZZA (CM)" required class="w-full p-3 border rounded-lg"><input type="number" name="age" placeholder="ETÀ" required class="w-full p-3 border rounded-lg"><select name="gender" required class="w-full p-3 border rounded-lg"><option value="UOMO">UOMO</option><option value="DONNA">DONNA</option></select></div><h4 class="font-bold mt-4">CIRCONFERENZE (CM)</h4><div class="grid grid-cols-3 gap-2"><input type="number" name="waist" placeholder="VITA" required step="0.1" class="w-full p-3 border rounded-lg"><input type="number" name="hips" placeholder="FIANCHI" required step="0.1" class="w-full p-3 border rounded-lg"><input type="number" name="chest" placeholder="PETTO" required step="0.1" class="w-full p-3 border rounded-lg"><input type="number" name="bicep" placeholder="BRACCIO" required step="0.1" class="w-full p-3 border rounded-lg"><input type="number" name="thigh" placeholder="COSCIA" required step="0.1" class="w-full p-3 border rounded-lg"></div><button type="submit" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 mt-4">REGISTRA MISURA</button></form><div class="card mt-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">CRONOLOGIA MISURE (${state.data.measurementsLog.length})</h3><ul>${logHTML || `<p class="text-gray-500 p-2">Nessuna misurazione in cronologia.</p>`}</ul></div></div>`;
+      }
+      
+// NUOVA FUNZIONE PER IL CALCOLO DELLA COMPLIANCE MENSILE CORRETTA
+      function calculateMonthlyCompliance() {
+          const dailyComplianceData = state.data.dailyCompliance;
+          
+          const today = new Date();
+          const currentMonthYear = today.toISOString().substring(0, 7); // YYYY-MM
+          const daysElapsed = today.getDate(); // Totale giorni da considerare (dal 1° a oggi)
+          const dailyComplianceKeys = ['habits', 'workout', 'diet', 'sleep'];
+          
+          let totalComplianceScore = 0; // Somma delle percentuali giornaliere (0 a 1)
+          let compliantDays = 0; // Giorni con compliance al 100%
+          
+          for (let i = 1; i <= daysElapsed; i++) {
+              const date = new Date(today.getFullYear(), today.getMonth(), i);
+              const dateString = date.toISOString().split('T')[0];
+
+              let dailyScore = 0;
+              const dailyStatus = dailyComplianceData[dateString];
+                  
+              if (dailyStatus) {
+                  const completedDailyTasks = dailyComplianceKeys.filter(k => dailyStatus[k]).length;
+                  const totalDailyTasks = dailyComplianceKeys.length;
+                  dailyScore = totalDailyTasks > 0 ? completedDailyTasks / totalDailyTasks : 0;
+                      
+                  if (completedDailyTasks === totalDailyTasks) {
+                      compliantDays++;
+                  }
+              } 
+              // Se dailyStatus è assente (giorno non registrato), dailyScore resta 0, che è corretto per il calcolo medio mensile.
+                  
+              totalComplianceScore += dailyScore;
+          }
+          
+          if (daysElapsed === 0) {
+              return { percentage: 0, completedDays: 0, totalDays: 0 };
+          }
+          
+          // Calcola la percentuale media di compliance sul totale dei giorni trascorsi nel mese
+          const averageMonthlyCompliance = (totalComplianceScore / daysElapsed) * 100;
+          
+          return { 
+              percentage: averageMonthlyCompliance.toFixed(0), 
+              completedDays: compliantDays,
+              totalDays: daysElapsed // Totale giorni trascorsi nel mese
+          };
+      }
+
+      function renderSummaryDashboard() {
+        const today = getTodayDateString();
+        const complianceToday = state.data.dailyCompliance[today] || { habits:false, workout:false, diet:false, sleep:false };
+        const dailyComplianceKeys = ['habits', 'workout', 'diet', 'sleep'];
+        const completedDailyTasks = dailyComplianceKeys.filter(k => complianceToday[k]).length;
+        const totalDailyTasks = dailyComplianceKeys.length;
+        const dailyCompliancePercent = totalDailyTasks > 0 ? ((completedDailyTasks / totalDailyTasks) * 100).toFixed(0) : 0;
+        
+        // CHIAMATA PER LA COMPLIANCE MENSILE
+        const monthlyCompliance = calculateMonthlyCompliance();
+        
+        const sleepHours = complianceToday.sleepData ? (complianceToday.sleepData.duration / 3600).toFixed(1) : 'N/D';
+        const hypnogramHTML = complianceToday.sleepData ? renderHypnogram(complianceToday.sleepData.hypnogram, complianceToday.sleepData.duration) : '';
+
+        // Determine icon/color for Daily Compliance checks
+        const icon = (isCompleted) => isCompleted ? '<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : '<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+        
+        // Find last measurement
+        const lastMeasurement = state.data.measurementsLog.length > 0
+            ? state.data.measurementsLog[state.data.measurementsLog.length - 1]
+            : null;
+        const lastWeight = lastMeasurement ? `${lastMeasurement.raw.weight} KG` : 'N/D';
+        const lastBMI = lastMeasurement ? `${lastMeasurement.calculated.bmi} (${lastMeasurement.calculated.classification})` : 'N/D';
+        
+        // Calculate today's net calories
+        const todayDietLog = state.data.diet.filter(d => d.date === today);
+        const totalCalories = todayDietLog.reduce((sum, d) => sum + d.calories, 0);
+        const targetCalories = state.data.dietPlan.targetCalories;
+        const netCaloriesInfo = totalCalories > 0 
+            ? `<span class="text-lg font-bold ${totalCalories <= targetCalories ? 'text-green-600' : 'text-red-500'}">${totalCalories} KCAL</span>`
+            : '<span class="text-gray-500">Nessun dato registrato.</span>';
+            
+        // LOGICA SONNO AGGIORNATA PER MOSTRARE IL TIMER IN CORSO
+        let sleepBlockHTML = '';
+        if (state.sleepStartTimestamp) {
+            // Stato 1: Timer in esecuzione
+            const elapsedSeconds = Math.round((Date.now() - state.sleepStartTimestamp) / 1000);
+            const hours = Math.floor(elapsedSeconds / 3600);
+            const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+            const seconds = elapsedSeconds % 60;
+            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            sleepBlockHTML = `<div class="card mt-4 p-3 bg-blue-100 border-2 border-blue-500"><h4 class="text-lg font-bold text-blue-700">SONNO IN CORSO...</h4><p class="text-3xl font-bold text-blue-600">${timeString}</p><button onclick="window.app.handleSleepToggle()" class="w-full p-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 mt-2">STOP SONNO E REGISTRA</button></div>`;
+        } else if (complianceToday.sleepData) {
+            // Stato 2: Sonno registrato oggi
+            sleepBlockHTML = `<div class="card mb-8 bg-indigo-50"><h3 class="text-xl font-bold mb-4 border-b text-indigo-700">SONNO E RECUPERO</h3><div class="flex justify-between items-center mb-3"><p class="font-semibold">ULTIMO SONNO: ${sleepHours} ORE</p><button onclick="window.app.handleSleepToggle()" class="p-2 text-sm font-bold text-white rounded-lg transition bg-indigo-500 hover:bg-indigo-600">VADO A DORMIRE</button></div>${hypnogramHTML}</div>`;
+        } else {
+            // Stato 3: Nessun sonno registrato
+            sleepBlockHTML = `<div class="card mt-4 p-3 bg-gray-50"><p class="text-gray-500">Nessun dato sonno per oggi. Avvia il timer sonno.</p><button onclick="window.app.handleSleepToggle()" class="w-full p-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 mt-2">AVVIA SONNO</button></div>`;
+        }
+            
+        return `<div class="p-4 bg-white shadow-xl rounded-xl mb-6">
+            <h3 class="text-xl font-bold mb-4 text-blue-600">BENVENUTO, ${state.username}!</h3>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                
+                <div class="card p-3 bg-gray-50">
+                    <h4 class="text-lg font-semibold text-gray-700">COMPLIANCE GIORNALIERA:</h4>
+                    <span class="text-2xl font-bold ${dailyCompliancePercent >= 100 ? 'text-green-600' : 'text-orange-500'}">${dailyCompliancePercent}%</span>
+                </div>
+                
+                <div class="card p-3 bg-gray-50">
+                    <h4 class="text-lg font-semibold text-gray-700">COMPLIANCE MENSILE:</h4>
+                    <span class="text-2xl font-bold ${monthlyCompliance.percentage >= 90 ? 'text-green-600' : 'text-orange-500'}">${monthlyCompliance.percentage}%</span>
+                    <p class="text-xs text-gray-500 mt-1 no-uppercase">(${monthlyCompliance.completedDays} gg 100% su ${monthlyCompliance.totalDays} trascorsi)</p>
+                </div>
+                </div>
+            
+            <div class="card p-3 bg-gray-50 mb-4">
+                <h4 class="text-lg font-semibold text-gray-700">OBIETTIVO CALORICO:</h4>
+                <p class="text-sm text-gray-500">CONSUMATE (${targetCalories} KCAL OBIETTIVO)</p>
+                ${netCaloriesInfo}
+            </div>
+
+            <h4 class="text-lg font-bold text-gray-700 mb-2 mt-4">COMPLIANCE DAILY CHECKLIST</h4>
+            <div class="card mb-6 bg-gray-50 p-4 space-y-3">
+                <div class="flex justify-between items-center"><span class="font-semibold text-gray-800">ABITUDINI (${state.data.habits.length})</span>${icon(complianceToday.habits)}</div>
+                <div class="flex justify-between items-center"><span class="font-semibold text-gray-800">ALLENAMENTO</span>${icon(complianceToday.workout)}</div>
+                <div class="flex justify-between items-center"><span class="font-semibold text-gray-800">DIETA</span>${icon(complianceToday.diet)}</div>
+                <div class="flex justify-between items-center"><span class="font-semibold text-gray-800">SONNO</span>${icon(complianceToday.sleep)}</div>
+            </div>
+
+            <h4 class="text-lg font-bold text-gray-700 mb-2 mt-4">DATI RECENTI</h4>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="card p-3 bg-gray-50">
+                    <h4 class="text-lg font-semibold text-gray-700">ULTIMO PESO:</h4>
+                    <span class="text-2xl font-bold text-blue-600">${lastWeight}</span>
+                </div>
+                <div class="card p-3 bg-gray-50">
+                    <h4 class="text-lg font-semibold text-gray-700">ULTIMO BMI:</h4>
+                    <span class="text-lg font-bold text-blue-600">${lastBMI}</span>
+                </div>
+            </div>
+
+            ${sleepBlockHTML}
+        </div>`;
+      }
+      
+      function renderMain() {
+        // ... (function body for renderMain is here, unchanged)
+        const nav = renderNavbar();
+        let content = '';
+
+        if (!state.isAuthenticated) {
+          content = state.view === 'register' ? renderRegister() : renderLogin();
+        } else {
+          switch (state.view) {
+            case 'summary': content = renderSummaryDashboard(); break;
+            case 'habits': content = renderHabitsDashboard(); break;
+            case 'workout': content = renderWorkoutDashboard(); break;
+            case 'workoutImport': content = renderWorkoutImport(); break;
+            case 'diet': content = renderDietDashboard(); break;
+            case 'dietImport': content = renderDietImport(); break;
+            case 'measurements': content = renderMeasurementsDashboard(); break;
+            case 'wizard': content = renderWizard(); break;
+            default: content = renderSummaryDashboard(); break;
+          }
+        }
+
+        const errorBanner = state.error ? `<div class="mb-4 p-2 text-sm rounded bg-red-100 text-red-700">ATTENZIONE: ${state.error}</div>` : '';
+        return `${nav}${errorBanner}${content}`;
+      }
+
+      function render() {
+        document.getElementById('app').innerHTML = renderMain();
+      }
+
+      // small helpers used in wizard flow
+      window.app.nextWizardStep = function() {
+        if (state.wizardStep < 4) state.wizardStep++;
+        else { state.view='summary'; state.wizardStep=0; }
+        saveAppState();
+        render();
+      };
+
+      // on initial load, render
+      render();
+
+      // PWA prompt handling (unchanged)
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        state.deferredPrompt = e;
+        render();
+      });
+
+    </script>
+</body>
+</html>
