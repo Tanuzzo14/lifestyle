@@ -1,0 +1,14 @@
+# File di dati
+data.json
+
+# File temporanei
+*.tmp
+*.bak
+*.swp
+
+# Log
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

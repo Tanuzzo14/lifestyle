@@ -64,42 +64,41 @@
     <div id="app" class="container mx-auto"></div>
 
     <script type="module">
-      // ---------- Firebase SDK ----------
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-      import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-      import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-      // (analytics import omitted - optional)
-
-      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-      const firebaseConfig = {
-        apiKey: "AIzaSyDDi0OXyc3Fn9bVnR8xobyu3Qf61qBJEVE",
-        authDomain: "lifestyle-fac1d.firebaseapp.com",
-        projectId: "lifestyle-fac1d",
-        storageBucket: "lifestyle-fac1d.firebasestorage.app",
-        messagingSenderId: "49251122953",
-        appId: "1:49251122953:web:00eb812d9ee00503539dd8",
-        measurementId: "G-H8HSFCF8HM"
-      };
-
-      const firebaseApp = initializeApp(firebaseConfig);
-      const db = getFirestore(firebaseApp);
-      const auth = getAuth(firebaseApp);
+      // ---------- API Configuration ----------
+      const API_URL = 'api.php';
+      
+      // Helper per chiamate API
+      async function apiCall(method, params = {}) {
+        try {
+          const options = {
+            method: method,
+            headers: { 'Content-Type': 'application/json' }
+          };
+          
+          if (method === 'GET') {
+            const query = new URLSearchParams(params).toString();
+            const response = await fetch(`${API_URL}?${query}`, options);
+            return await response.json();
+          } else {
+            options.body = JSON.stringify(params);
+            const response = await fetch(API_URL, options);
+            return await response.json();
+          }
+        } catch (error) {
+          console.error('Errore API:', error);
+          return { success: false, error: error.message };
+        }
+      }
 
       // NUOVA FUNZIONE HELPER PER IL REDIRECT
-        async function redirectToProDashboard() {
-          try {
-            // 1. Salva la configurazione di Firebase nel localStorage
-            localStorage.setItem('__firebase_config', JSON.stringify(firebaseConfig));
-            
-            // 2. Esegui il redirect (NON serve più il token)
-            window.location.href = "pro.html";
-          } catch (error) {
-            console.error("Errore durante la preparazione del redirect:", error);
-            displayError("IMPOSSIBILE ACCEDERE ALLA DASHBOARD PRO.");
-          }
+      async function redirectToProDashboard() {
+        try {
+          window.location.href = "pro.html";
+        } catch (error) {
+          console.error("Errore durante la preparazione del redirect:", error);
+          displayError("IMPOSSIBILE ACCEDERE ALLA DASHBOARD PRO.");
         }
-      // Expose for debugging if needed
-      window._firebase = { app: firebaseApp, db, auth };
+      }
 
       // ---------- APP STATE ----------
       let state = {
@@ -152,34 +151,38 @@
           }
       }
 
-      // ---------- FIRESTORE PERSISTENCE ----------
-      // Save the entire state.data + sleepStartTimestamp under users/{uid}
+      // ---------- DATA PERSISTENCE ----------
+      // Save the entire state.data + sleepStartTimestamp
       async function saveAppState() {
         if (!state.uid) return;
         try {
-          const userRef = doc(db, "users", state.uid);
-          // Keep a copy of the data, ensure no functions or circular
           const payload = {
             data: state.data || {},
             sleepStartTimestamp: state.sleepStartTimestamp || null,
             displayUsername: state.username || null,
+            userType: state.userType || 'user',
             updatedAt: new Date().toISOString()
           };
-          await setDoc(userRef, payload, { merge: true });
+          
+          const result = await apiCall('POST', { userId: state.uid, data: payload });
+          if (!result.success) {
+            console.error("Errore salvataggio:", result.error);
+            displayError("ERRORE SALVATAGGIO DATI");
+          }
         } catch (err) {
-          console.error("Errore salvataggio Firebase:", err);
-          displayError("ERRORE SALVATAGGIO CLOUD");
+          console.error("Errore salvataggio:", err);
+          displayError("ERRORE SALVATAGGIO DATI");
         }
       }
 
-      // Load user data from users/{uid} and apply to state
+      // Load user data and apply to state
       async function loadUserData() {
         if (!state.uid) return;
         try {
-          const userRef = doc(db, "users", state.uid);
-          const snap = await getDoc(userRef);
-          if (snap.exists()) {
-            const obj = snap.data();
+          const result = await apiCall('GET', { userId: state.uid });
+          
+          if (result.success && result.data) {
+            const obj = result.data;
             // obj may contain .data (app data) and sleepStartTimestamp
             state.data = obj.data || {
                 habits: [],
@@ -192,6 +195,7 @@
                 measurementsLog: []
             };
             state.sleepStartTimestamp = obj.sleepStartTimestamp || null;
+            state.userType = obj.userType || 'user';
 
             // start sleep timer if needed
             if (state.sleepStartTimestamp && !state.sleepTimerIntervalId) {
@@ -217,38 +221,30 @@
                 measurementsLog: []
             };
             state.sleepStartTimestamp = null;
+            state.userType = 'user';
             // create doc
             await saveAppState();
           }
         } catch (err) {
-          console.error("Errore caricamento Firebase:", err);
-          displayError("ERRORE CARICAMENTO CLOUD");
+          console.error("Errore caricamento:", err);
+          displayError("ERRORE CARICAMENTO DATI");
         }
       }
 
       // ---------- AUTH STATE LISTENER (MODIFICATO) ----------
-      onAuthStateChanged(auth, async (user) => {
-        if (user) {
+      // Check localStorage for existing session
+      async function checkAuth() {
+        const savedUser = localStorage.getItem('currentUser');
+        if (savedUser) {
+          const user = JSON.parse(savedUser);
           state.uid = user.uid;
-          if (!state.username && user.email) {
-            const inferred = user.email.split('@')[0].toUpperCase();
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            const userData = userDoc.exists() ? userDoc.data() : {};
-              const userType = userData.userType || "user";
-            state.username = inferred;
-          }
+          state.username = user.username;
+          state.userType = user.userType || 'user';
           state.isAuthenticated = true;
 
           await loadUserData();
 
-          // 🔹 Recupera il tipo di utente dal database
-          // NOTA: Leggiamo da Firestore, non dallo state locale per sicurezza.
-          const userDoc = await getDoc(doc(db, "users", user.uid));
-          const userData = userDoc.exists() ? userDoc.data() : {};
-          const userType = userData.userType || "user";
-
-          if (userType === "pro") {
-            // Utilizza la nuova funzione per il redirect
+          if (state.userType === "pro") {
             redirectToProDashboard();
             return;
           }
@@ -270,76 +266,132 @@
           state.view = 'login';
           render();
         }
-      });
+      }
+      
+      // Initialize on load
+      checkAuth();
 
 
       // ---------- APP LOGIC ----------
       window.app = {
-        // LOGIN with username -> construct fake email
+        // LOGIN with username
         login: async function(username, password) {
           try {
             const userKey = username.toLowerCase();
-            const email = `${userKey}@lifestyledesigner.app`;
-            await signInWithEmailAndPassword(auth, email, password);
-            // onAuthStateChanged gestirà il caricamento dati e il redirect se necessario
-            state.username = userKey.toUpperCase();
+            const uid = simpleHash(userKey).toString();
+            
+            // Check if user exists
+            const result = await apiCall('GET', { userId: uid });
+            
+            if (result.success && result.data) {
+              // Verify password (simple hash comparison)
+              const storedPasswordHash = result.data.passwordHash || '';
+              const inputPasswordHash = simpleHash(password).toString();
+              
+              if (storedPasswordHash === inputPasswordHash) {
+                state.username = userKey.toUpperCase();
+                state.uid = uid;
+                state.userType = result.data.userType || 'user';
+                state.isAuthenticated = true;
+                
+                // Save to localStorage
+                localStorage.setItem('currentUser', JSON.stringify({
+                  uid: uid,
+                  username: state.username,
+                  userType: state.userType
+                }));
+                
+                await loadUserData();
+                
+                if (state.userType === "pro") {
+                  redirectToProDashboard();
+                  return;
+                }
+                
+                state.view = 'summary';
+                render();
+              } else {
+                displayError('NOME UTENTE O PASSWORD NON VALIDI.');
+              }
+            } else {
+              displayError('NOME UTENTE O PASSWORD NON VALIDI.');
+            }
           } catch (err) {
             console.error("Login error:", err);
             displayError('NOME UTENTE O PASSWORD NON VALIDI.');
           }
         },
 
-        // REGISTER with username -> create fake email (MODIFICATO)
+        // REGISTER with username
         register: async function(username, password, userType = "user") {
           try {
             const userKey = username.toLowerCase();
-            const email = `${userKey}@lifestyledesigner.app`;
+            const uid = simpleHash(userKey).toString();
+            const passwordHash = simpleHash(password).toString();
 
-            const cred = await createUserWithEmailAndPassword(auth, email, password);
-            const newUser = cred.user;
-
-            state.username = userKey.toUpperCase();
-            state.uid = newUser.uid;
-            state.isAuthenticated = true;
-
-            // Salva il tipo di utente (user/pro) nel documento Firestore
-            const userRef = doc(db, "users", newUser.uid);
-            await setDoc(userRef, { 
-                userType: userType, 
-                displayUsername: state.username,
-                clients: [] // Aggiungi un array vuoto di clienti per i pro
-            }, { merge: true });
-            
-            if (userType === "pro") {
-              // Utilizza la nuova funzione per il redirect
-              redirectToProDashboard();
+            // Check if user already exists
+            const existingUser = await apiCall('GET', { userId: uid });
+            if (existingUser.success && existingUser.data) {
+              displayError('NOME UTENTE GIÀ IN USO. SCEGLI UN ALTRO NOME.');
               return;
             }
 
-            // per utenti normali
-            state.view = 'wizard';
-            state.wizardStep = 1;
-            render();
-            displayError('REGISTRAZIONE RIUSCITA! INIZIA LA CONFIGURAZIONE.');
-          } catch (err) {
-            console.error("Register error:", err);
-            if (err.code === 'auth/email-already-in-use') {
-              displayError('NOME UTENTE GIÀ IN USO. SCEGLI UN ALTRO NOME.');
-            } else if (err.code === 'auth/weak-password') {
-              displayError('PASSWORD DEBOLE. SCEGLI UNA PASSWORD PIÙ FORTE.');
+            state.username = userKey.toUpperCase();
+            state.uid = uid;
+            state.userType = userType;
+            state.isAuthenticated = true;
+
+            // Save user data
+            const payload = {
+              userType: userType, 
+              displayUsername: state.username,
+              passwordHash: passwordHash,
+              clients: [],
+              data: state.data,
+              sleepStartTimestamp: null,
+              createdAt: new Date().toISOString()
+            };
+            
+            const result = await apiCall('POST', { userId: uid, data: payload });
+            
+            if (result.success) {
+              // Save to localStorage
+              localStorage.setItem('currentUser', JSON.stringify({
+                uid: uid,
+                username: state.username,
+                userType: userType
+              }));
+              
+              if (userType === "pro") {
+                redirectToProDashboard();
+                return;
+              }
+
+              // per utenti normali
+              state.view = 'wizard';
+              state.wizardStep = 1;
+              render();
+              displayError('REGISTRAZIONE RIUSCITA! INIZIA LA CONFIGURAZIONE.');
             } else {
               displayError('ERRORE DURANTE LA REGISTRAZIONE.');
             }
+          } catch (err) {
+            console.error("Register error:", err);
+            displayError('ERRORE DURANTE LA REGISTRAZIONE.');
           }
         },
 
         logout: async function() {
           try {
-            await signOut(auth);
-            // onAuthStateChanged will reset UI
+            localStorage.removeItem('currentUser');
+            state.uid = null;
+            state.username = null;
+            state.isAuthenticated = false;
+            state.view = 'login';
+            render();
             displayError('DISCONNESSO.');
           } catch (err) {
-            console.error("SignOut error:", err);
+            console.error("Logout error:", err);
             displayError('ERRORE DURANTE LOGOUT.');
           }
         },

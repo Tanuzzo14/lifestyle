@@ -35,22 +35,39 @@
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+const API_URL = 'api.php';
 
-/* ---------- FALLBACK CONFIG (comodo per test locali) ---------- */
-const defaultConfig = {
-  apiKey: "AIzaSyDDi0OXyc3Fn9bVnR8xobyu3Qf61qBJEVE",
-  authDomain: "lifestyle-fac1d.firebaseapp.com",
-  projectId: "lifestyle-fac1d",
-  storageBucket: "lifestyle-fac1d.firebasestorage.app",
-  messagingSenderId: "49251122953",
-  appId: "1:49251122953:web:00eb812d9ee00503539dd8",
-  measurementId: "G-H8HSFCF8HM"
-};
-const firebaseConfig = JSON.parse(localStorage.getItem('__firebase_config') || JSON.stringify(defaultConfig));
-/* -------------------------------------------------------------- */
+// Helper per chiamate API
+async function apiCall(method, params = {}) {
+  try {
+    const options = {
+      method: method,
+      headers: { 'Content-Type': 'application/json' }
+    };
+    
+    if (method === 'GET') {
+      const query = new URLSearchParams(params).toString();
+      const response = await fetch(`${API_URL}?${query}`, options);
+      return await response.json();
+    } else {
+      options.body = JSON.stringify(params);
+      const response = await fetch(API_URL, options);
+      return await response.json();
+    }
+  } catch (error) {
+    console.error('Errore API:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Simple hash function
+function simpleHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return hash;
+}
 
 const proApp = {
   user: null,
@@ -71,41 +88,41 @@ const proApp = {
 
   async init() {
     try {
-      const app = initializeApp(firebaseConfig);
-      this.auth = getAuth(app);
-      this.db = getFirestore(app);
-      this.getUserDocRef = (uid) => doc(this.db, "users", uid);
       await this.setupAuth();
     } catch (e) {
-      this.showError("Errore inizializzazione Firebase: " + (e.message || e));
+      this.showError("Errore inizializzazione: " + (e.message || e));
       console.error(e);
     }
   },
 
   async setupAuth() {
-    onAuthStateChanged(this.auth, async (user) => {
-      const loadingIndicator = document.getElementById('loading-indicator');
-      if (loadingIndicator) loadingIndicator.classList.add('hidden');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    if (loadingIndicator) loadingIndicator.classList.add('hidden');
 
-      if (!user) {
-        this.showError("Sessione scaduta. Effettua nuovamente il login.");
-        return;
-      }
-      this.user = user;
-      await this.initDashboard();
-    });
+    // Check localStorage for current user
+    const savedUser = localStorage.getItem('currentUser');
+    if (!savedUser) {
+      this.showError("Sessione scaduta. Effettua nuovamente il login.");
+      return;
+    }
+    
+    const user = JSON.parse(savedUser);
+    this.user = { uid: user.uid };
+    await this.initDashboard();
   },
 
   async initDashboard() {
     if (!this.user) return;
     try {
-      const snap = await getDoc(this.getUserDocRef(this.user.uid));
-      if (!snap.exists() || snap.data().userType !== "pro") {
+      const result = await apiCall('GET', { userId: this.user.uid });
+      
+      if (!result.success || !result.data || result.data.userType !== "pro") {
         this.showError("Accesso non autorizzato. Il tuo account non è un account professionista.");
-        await signOut(this.auth);
+        localStorage.removeItem('currentUser');
         return;
       }
-      this.data = snap.data();
+      
+      this.data = result.data;
       await this.loadClientsData();
       this.render();
     } catch (err) {
@@ -119,9 +136,10 @@ const proApp = {
     const clients = this.data.clients || [];
     for (const client of clients) {
       try {
-        const snap = await getDoc(this.getUserDocRef(client.uid));
-        // Aggiungo anche l'UID nella copia dei dati per comodità nel modale
-        if (snap.exists()) this.clientsData[client.uid] = { ...snap.data(), uid: client.uid };
+        const result = await apiCall('GET', { userId: client.uid });
+        if (result.success && result.data) {
+          this.clientsData[client.uid] = { ...result.data, uid: client.uid };
+        }
       } catch (e) {
         console.error(`Impossibile caricare i dati per il cliente ${client.uid}:`, e);
       }
@@ -257,16 +275,14 @@ const proApp = {
     if (!userKey) return alert("Inserisci un nome utente valido.");
     const newClientUsername = userKey.toUpperCase();
     const clientId = 'client_' + Date.now() + '_' + Math.floor(Math.random()*10000);
-    const fakeEmail = `${userKey}@lifestyledesigner.app`;
+    const passwordHash = simpleHash(password).toString();
 
     try {
-      // 1) crea documento "utente" su Firestore (solo DB)
-      const userRef = this.getUserDocRef(clientId);
-      await setDoc(userRef, {
+      // 1) crea documento "utente" 
+      const userData = {
         userType: "user",
         displayUsername: newClientUsername,
-        fakeEmail: fakeEmail,
-        passwordHint: String(password || ''),
+        passwordHash: passwordHash,
         data: {
           habits: [],
           workout: [],
@@ -280,13 +296,15 @@ const proApp = {
         sleepStartTimestamp: null,
         createdBy: proUid,
         createdAt: new Date().toISOString()
-      });
+      };
+      
+      await apiCall('POST', { userId: clientId, data: userData });
 
-      // 2) associa l'utente alla lista clients del professionista (arrayUnion)
-      const proRef = this.getUserDocRef(proUid);
-      await updateDoc(proRef, {
-        clients: arrayUnion({ uid: clientId, username: newClientUsername })
-      });
+      // 2) associa l'utente alla lista clients del professionista
+      this.data.clients = this.data.clients || [];
+      this.data.clients.push({ uid: clientId, username: newClientUsername });
+      
+      await apiCall('POST', { userId: proUid, data: this.data });
 
       // 3) ricarica e mostra
       await this.loadClientsData();
@@ -294,7 +312,6 @@ const proApp = {
       this.closeAddClientModal();
       alert(`Utente '${newClientUsername}' creato e associato con successo!`);
     } catch (err) {
-      // Messaggio dettagliato in console + alert leggibile
       console.error("Errore creazione utente:", { code: err?.code, message: err?.message, stack: err?.stack, raw: err });
       alert("Errore durante la creazione dell'utente.\nCodice: " + (err?.code || 'N/A') + "\nMessaggio: " + (err?.message || String(err)));
     }
@@ -305,7 +322,7 @@ const proApp = {
     this.data.clients = (this.data.clients || []).filter(c => c.uid !== uid);
     delete this.clientsData[uid];
     try {
-      await setDoc(this.getUserDocRef(this.user.uid), { clients: this.data.clients }, { merge: true });
+      await apiCall('POST', { userId: this.user.uid, data: this.data });
       this.render();
       alert("Utente rimosso dalla tua lista.");
     } catch (err) {
@@ -586,7 +603,7 @@ const proApp = {
       // Rimuovo l'uid che ho aggiunto per la comodità interna prima di salvare
       const { uid: _, ...dataToSave } = updatedData; 
       
-      await setDoc(this.getUserDocRef(uid), dataToSave, { merge: true });
+      await apiCall('POST', { userId: uid, data: dataToSave });
       this.clientsData[uid] = updatedData;
       
       alert("Dati del cliente aggiornati con successo.");
@@ -611,7 +628,7 @@ const proApp = {
       if (!clientData || clientData.userType !== 'user') return alert("Cliente non valido.");
       
       const newWorkout = {
-          id: Date.now() + Math.floor(Math.random()*10000), // Genera ID fittizio
+          id: Date.now() + Math.floor(Math.random()*10000),
           day: String(day).toUpperCase(),
           exercise: exercise,
           sets: sets,
@@ -622,12 +639,10 @@ const proApp = {
       const newWorkoutArray = [...(clientData.data.workout || []), newWorkout];
 
       try {
-          await updateDoc(this.getUserDocRef(uid), { 'data.workout': newWorkoutArray });
+          clientData.data.workout = newWorkoutArray;
+          await apiCall('POST', { userId: uid, data: clientData });
           
-          // Aggiorna l'oggetto locale
           this.clientsData[uid].data.workout = newWorkoutArray;
-          
-          // Ricarica la vista
           this.openEditClientModal(uid, 'workout');
           alert("Esercizio aggiunto con successo!");
       } catch (err) {
@@ -636,7 +651,6 @@ const proApp = {
       }
   },
 
-  // Esempio: Aggiunta di un Pasto al Piano Dieta del Cliente
   async addClientDietMeal(uid, day, category, description, weight, type, calories) {
       if (!uid) return;
 
@@ -651,21 +665,17 @@ const proApp = {
       let newDietPlan;
 
       if (dayIndex !== -1) {
-          // Giorno esistente: aggiungi il pasto
           newDietPlan = [...dietPlan];
           newDietPlan[dayIndex].meals.push(newMeal);
       } else {
-          // Nuovo giorno: crea il piano per il giorno
           newDietPlan = [...dietPlan, { day: String(day).toUpperCase(), meals: [newMeal] }];
       }
       
       try {
-          await updateDoc(this.getUserDocRef(uid), { 'data.dietPlan.plan': newDietPlan });
+          clientData.data.dietPlan.plan = newDietPlan;
+          await apiCall('POST', { userId: uid, data: clientData });
           
-          // Aggiorna l'oggetto locale
           this.clientsData[uid].data.dietPlan.plan = newDietPlan;
-
-          // Ricarica la vista
           this.openEditClientModal(uid, 'diet');
           alert("Pasto aggiunto al piano dieta con successo!");
       } catch (err) {
@@ -674,19 +684,15 @@ const proApp = {
       }
   },
   
-  // Esempio: Cancellazione di un campo specifico (es. piano completo)
   async clearClientData(uid, fieldPath) {
       if (!confirm(`Sei sicuro di voler cancellare i dati in ${fieldPath}? Questa azione è irreversibile.`)) return;
       if (!uid) return;
       
       try {
-          // Firestore non supporta l'eliminazione di un campo in un array o un oggetto con un path.
-          // Dobbiamo caricare i dati, modificarli e risalvare l'intero oggetto parent.
-          const docRef = this.getUserDocRef(uid);
-          const snap = await getDoc(docRef);
-          if (!snap.exists()) return alert("Documento cliente non trovato.");
+          const result = await apiCall('GET', { userId: uid });
+          if (!result.success || !result.data) return alert("Documento cliente non trovato.");
 
-          let clientData = snap.data();
+          let clientData = result.data;
           let data = clientData.data;
 
           if (fieldPath === 'workout') {
@@ -697,9 +703,9 @@ const proApp = {
               return alert("Path non supportato per la cancellazione rapida.");
           }
           
-          await updateDoc(docRef, { data: data });
+          clientData.data = data;
+          await apiCall('POST', { userId: uid, data: clientData });
           
-          // Aggiorna locale e ricarica
           this.clientsData[uid].data = data;
           this.openEditClientModal(uid, fieldPath.includes('diet') ? 'diet' : 'workout');
           alert("Dati cancellati con successo!");
@@ -710,7 +716,6 @@ const proApp = {
       }
   },
 
-  // Esempio: Rimozione di una Misurazione
   async removeClientMeasurement(uid, measurementId) {
       if (!confirm("Sei sicuro di voler eliminare questa misurazione?")) return;
       if (!uid) return;
@@ -721,12 +726,10 @@ const proApp = {
       const newLog = (clientData.data.measurementsLog || []).filter(log => log.id !== measurementId);
 
       try {
-          await updateDoc(this.getUserDocRef(uid), { 'data.measurementsLog': newLog });
+          clientData.data.measurementsLog = newLog;
+          await apiCall('POST', { userId: uid, data: clientData });
           
-          // Aggiorna l'oggetto locale
           this.clientsData[uid].data.measurementsLog = newLog;
-
-          // Ricarica la vista
           this.openEditClientModal(uid, 'measurements');
           alert("Misurazione rimossa con successo!");
       } catch (err) {
@@ -735,7 +738,6 @@ const proApp = {
       }
   },
 
-  // Esempio: Registrazione di una Misurazione (Placeholder, la logica di calcolo va implementata)
   async addClientMeasurement(uid, weight, height, age, gender, waist, hips, chest, bicep, thigh) {
       if (!uid) return;
       
@@ -752,14 +754,13 @@ const proApp = {
           thigh: Number(thigh),
       };
       
-      // LOGICA DI CALCOLO SEMPLIFICATA O FITTIZIA
       const calculateBMI = (w, h) => (w / ((h / 100) ** 2)).toFixed(2);
       const calculateWHR = (w, h) => (w / h).toFixed(2);
       
       const calculatedData = {
           bmi: calculateBMI(rawData.weight, rawData.height),
           whr: calculateWHR(rawData.waist, rawData.hips),
-          bodyFat: 'N/D', // Richiede formule complesse
+          bodyFat: 'N/D',
           classification: 'Da Calcolare',
           risk: 'Da Calcolare',
       };
@@ -775,9 +776,10 @@ const proApp = {
       const newLog = [...(clientData.data.measurementsLog || []), newMeasurement];
 
       try {
-          await updateDoc(this.getUserDocRef(uid), { 'data.measurementsLog': newLog });
-          this.clientsData[uid].data.measurementsLog = newLog;
+          clientData.data.measurementsLog = newLog;
+          await apiCall('POST', { userId: uid, data: clientData });
           
+          this.clientsData[uid].data.measurementsLog = newLog;
           this.openEditClientModal(uid, 'measurements');
           alert("Misurazione aggiunta con successo!");
       } catch (err) {
@@ -786,18 +788,16 @@ const proApp = {
       }
   },
   
-  // Esempio: Salva Compliance (Marca come completato per il giorno)
   async saveWorkoutCompliance(uid, status) {
       if (!uid) return;
       const today = new Date().toISOString().slice(0, 10);
       
       try {
-          await updateDoc(this.getUserDocRef(uid), { 
-              [`data.dailyCompliance.${today}.workout`]: status 
-          });
-
-          // Aggiorna l'oggetto locale
-          this.clientsData[uid].data.dailyCompliance[today] = this.clientsData[uid].data.dailyCompliance[today] || {};
+          const clientData = this.clientsData[uid];
+          clientData.data.dailyCompliance[today] = clientData.data.dailyCompliance[today] || {};
+          clientData.data.dailyCompliance[today].workout = status;
+          
+          await apiCall('POST', { userId: uid, data: clientData });
           this.clientsData[uid].data.dailyCompliance[today].workout = status;
 
           this.openEditClientModal(uid, 'workout');
@@ -813,12 +813,11 @@ const proApp = {
       const today = new Date().toISOString().slice(0, 10);
       
       try {
-          await updateDoc(this.getUserDocRef(uid), { 
-              [`data.dailyCompliance.${today}.diet`]: status 
-          });
-
-          // Aggiorna l'oggetto locale
-          this.clientsData[uid].data.dailyCompliance[today] = this.clientsData[uid].data.dailyCompliance[today] || {};
+          const clientData = this.clientsData[uid];
+          clientData.data.dailyCompliance[today] = clientData.data.dailyCompliance[today] || {};
+          clientData.data.dailyCompliance[today].diet = status;
+          
+          await apiCall('POST', { userId: uid, data: clientData });
           this.clientsData[uid].data.dailyCompliance[today].diet = status;
 
           this.openEditClientModal(uid, 'diet');
@@ -861,9 +860,8 @@ const proApp = {
   
   async signOut() {
     try {
-      await signOut(this.auth);
+      localStorage.removeItem('currentUser');
     } catch (e) { console.warn("Errore durante signOut:", e); }
-    localStorage.removeItem('__firebase_config');
     window.location.href = "index.html";
   }
 };
