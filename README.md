@@ -2,49 +2,48 @@
 
 ## Sistema di Persistenza Dati
 
-Questo progetto utilizza **localStorage** del browser per salvare tutti i dati dell'applicazione, rendendola compatibile con GitHub Pages e qualsiasi hosting di file statici.
+Questo progetto utilizza **data.json** (tramite api.php) per salvare tutti i dati dell'applicazione su server, permettendo l'accesso multi-dispositivo. I dati vengono memorizzati nel file data.json sul server e sincronizzati tra diversi dispositivi.
 
 ## Deployment
 
-### GitHub Pages (Consigliato)
-L'applicazione è progettata per funzionare perfettamente su GitHub Pages senza bisogno di backend:
-1. Fare push del codice su GitHub
-2. Abilitare GitHub Pages nelle impostazioni del repository
-3. L'applicazione sarà accessibile su `https://username.github.io/repository-name/`
+### Hosting con PHP
+L'applicazione richiede un server PHP per la persistenza dei dati:
+1. Caricare tutti i file su un server con supporto PHP
+2. Assicurarsi che il file data.json sia scrivibile dal server (permessi 666 o 777)
+3. L'applicazione sarà accessibile all'URL del server
 
-### Hosting Locale
-Per testare in locale:
+### Hosting Locale (per test)
+Per testare in locale con PHP:
 ```bash
-# Usando Python
-python3 -m http.server 8000
-
-# Usando Node.js
-npx http-server -p 8000
-
-# Usando PHP (opzionale, api.php non necessario)
+# Usando PHP built-in server
 php -S localhost:8000
+
+# L'applicazione sarà disponibile su http://localhost:8000
 ```
+
+**Nota**: data.json viene creato automaticamente alla prima registrazione utente.
 
 ## Come Funziona
 
 ### Autenticazione
 
-Il sistema utilizza un approccio semplificato basato su localStorage:
+Il sistema utilizza api.php e data.json per l'autenticazione:
 - Username viene convertito in un ID univoco tramite hash
-- Password viene hashata e salvata nel localStorage
-- Sessione utente salvata in localStorage del browser
-- Tutti i dati persistono nel browser dell'utente
+- Password viene hashata e salvata in data.json sul server
+- Sessione utente salvata in localStorage del browser per accesso rapido
+- Tutti i dati utente persistono in data.json sul server
+- **Accesso multi-dispositivo**: i dati sono accessibili da qualsiasi dispositivo connesso al server
 
-### Struttura Dati in localStorage
+### Struttura Dati in data.json
 
-I dati vengono salvati nella chiave `lifestyle_data` del localStorage:
+I dati vengono salvati nel file `data.json` sul server tramite api.php:
 
 ```json
 {
   "userId1": {
     "userType": "user" | "pro",
     "displayUsername": "USERNAME",
-    "passwordHash": "hash",
+    "passwordHash": "hash_della_password",
     "data": {
       "habits": [],
       "workout": [],
@@ -59,17 +58,20 @@ I dati vengono salvati nella chiave `lifestyle_data` del localStorage:
 }
 ```
 
-### API Simulata
+### API PHP
 
-L'applicazione include una funzione `apiCall()` che simula chiamate API ma opera interamente con localStorage:
-- **GET** - Lettura dati da localStorage
-- **POST/PUT** - Salvataggio dati in localStorage
-- **DELETE** - Eliminazione dati da localStorage
+L'applicazione include `api.php` che gestisce tutte le operazioni CRUD con data.json:
+- **GET** - Lettura dati utente da data.json
+- **POST/PUT** - Salvataggio dati utente in data.json (include passwordHash)
+- **DELETE** - Eliminazione dati utente da data.json
+
+Il file data.json viene creato automaticamente al primo utilizzo.
 
 ## Caratteristiche
 
 ### Per Utenti Normali
-- ✅ Registrazione e login
+- ✅ Registrazione e login con password salvata su server
+- ✅ Accesso multi-dispositivo tramite data.json
 - ✅ Monitoraggio abitudini giornaliere
 - ✅ Gestione piano di allenamento
 - ✅ Gestione piano dieta
@@ -83,54 +85,66 @@ L'applicazione include una funzione `apiCall()` che simula chiamate API ma opera
 - ✅ Creazione account utenti
 - ✅ Modifica piani allenamento/dieta
 - ✅ Visualizzazione progressi clienti
+- ✅ Accesso multi-dispositivo ai dati clienti
 
 ## Sicurezza
 
-**NOTA IMPORTANTE**: Questo sistema è progettato per scopi dimostrativi/educativi. Per un ambiente di produzione, considerare:
-- ⚠️ I dati sono salvati in chiaro nel localStorage (accessibili via DevTools)
+**NOTA IMPORTANTE**: Questo sistema salva i dati su server tramite data.json. Considerazioni di sicurezza:
+- ✅ I dati sono salvati sul server in data.json (non solo nel browser)
+- ✅ Le password sono hashate prima di essere salvate in data.json
+- ✅ Accesso multi-dispositivo abilitato tramite server
 - ⚠️ L'hash delle password usa una funzione semplice (non bcrypt/Argon2)
-- ⚠️ Non c'è sincronizzazione cloud - i dati sono solo locali al browser
-- ⚠️ Cancellando la cache/localStorage si perdono tutti i dati
-- ✅ Per produzione: implementare backend con database, autenticazione JWT, HTTPS
+- ⚠️ data.json è un file JSON in chiaro sul server
+- ⚠️ Non c'è crittografia dei dati sensibili
+- ⚠️ Assicurarsi che data.json non sia accessibile pubblicamente via web
+- ✅ Per produzione: implementare HTTPS, hash bcrypt, crittografia database
 
 ## Testing
 
 Per testare l'implementazione:
-1. Aprire `index.html` in un browser
-2. Registrare un nuovo utente (tipo "Utente" o "Professionista della salute")
-3. I dati vengono salvati automaticamente in localStorage
-4. Effettuare logout e login per verificare la persistenza
-5. Controllare DevTools > Application > Local Storage per vedere i dati
+1. Avviare un server PHP locale: `php -S localhost:8000`
+2. Aprire `http://localhost:8000/index.html` in un browser
+3. Registrare un nuovo utente (tipo "Utente" o "Professionista della salute")
+4. I dati vengono salvati automaticamente in data.json sul server
+5. Effettuare logout e login per verificare la persistenza
+6. Aprire l'applicazione in un altro browser/tab e login con lo stesso utente
+7. Verificare che i dati siano sincronizzati tra i dispositivi
+8. Controllare il file data.json per vedere i dati salvati (include passwordHash)
 
 ## Troubleshooting
 
 ### Dati non persistono
-- Verificare che il browser non stia in modalità incognito/privata
-- Controllare che il browser non stia bloccando localStorage
-- Verificare la console del browser per errori JavaScript
-- Controllare DevTools > Application > Local Storage per vedere se i dati sono presenti
+- Verificare che il server PHP sia in esecuzione
+- Controllare che data.json esista e sia scrivibile (permessi)
+- Verificare la console del browser per errori API
+- Controllare che api.php sia accessibile
 
-### Errori 405 o problemi con api.php
-- ✅ **RISOLTO**: L'applicazione ora non usa più api.php
-- Se vedete ancora errori 405, svuotate la cache del browser
-- L'applicazione funziona completamente con localStorage
+### Errori di connessione all'API
+- ✅ **RISOLTO**: L'applicazione ora usa api.php per data.json
+- Verificare che il server PHP sia avviato
+- Controllare che api.php sia nella stessa directory di index.html
+- Verificare i permessi del file data.json
 
 ### Perdita dati
-- I dati sono salvati solo localmente nel browser
-- Cancellare cookie/cache cancella anche i dati
-- Per backup: esportare i dati dal localStorage manualmente
+- I dati sono salvati in data.json sul server
+- Fare backup regolari del file data.json
+- Non cancellare data.json senza prima fare un backup
+- Considerare l'uso di un database per ambienti di produzione
 
 ## File del Progetto
 
-- **index.html** - Applicazione principale utente
-- **pro.html** - Dashboard professionista
-- **api.php** - File legacy (non più utilizzato su GitHub Pages)
-- **test_api.html** - Test API legacy (non più utilizzato)
+- **index.html** - Applicazione principale utente (usa api.php per data.json)
+- **pro.html** - Dashboard professionista (usa api.php per data.json)
+- **api.php** - API PHP per gestione data.json (lettura/scrittura/eliminazione)
+- **data.json** - File di storage dati sul server (creato automaticamente)
+- **test_api.html** - Test API (per verificare funzionamento api.php)
 
 ## Requisiti
 
+- Server web con supporto PHP (PHP 7.0 o superiore)
+- Permessi di scrittura per data.json
 - Browser moderno con supporto per:
-  - localStorage API
+  - localStorage API (per sessione utente)
+  - Fetch API (per chiamate a api.php)
   - ES6+ JavaScript
   - CSS Grid/Flexbox
-- Nessun server o backend richiesto!
