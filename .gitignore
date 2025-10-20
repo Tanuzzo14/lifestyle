@@ -5,6 +5,7 @@ data.json
 *.tmp
 *.bak
 *.swp
+tmp/
 
 # Log
 *.log

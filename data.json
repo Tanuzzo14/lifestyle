@@ -1,1 +1,70 @@
-
+{
+    "-1145792675": {
+        "data": {
+            "habits": [],
+            "workout": [
+                {
+                    "id": 1760975909163.8503,
+                    "day": "GIORNO 1",
+                    "exercise": "Panca piana - 3 serie x 10 ripetizioni - 60kg",
+                    "sets": 0,
+                    "reps": 0,
+                    "load": "N\/D"
+                },
+                {
+                    "id": 1760975909163.9177,
+                    "day": "GIORNO 1",
+                    "exercise": "Squat - 4 serie x 8 ripetizioni - 80kg",
+                    "sets": 0,
+                    "reps": 0,
+                    "load": "N\/D"
+                },
+                {
+                    "id": 1760975909163.4539,
+                    "day": "GIORNO 1",
+                    "exercise": "Trazioni - 3 serie x 12 ripetizioni",
+                    "sets": 0,
+                    "reps": 0,
+                    "load": "N\/D"
+                },
+                {
+                    "id": 1760975909163.3665,
+                    "day": "GIORNO 2",
+                    "exercise": "Stacco - 3 serie x 6 ripetizioni - 100kg",
+                    "sets": 0,
+                    "reps": 0,
+                    "load": "N\/D"
+                },
+                {
+                    "id": 1760975909163.4482,
+                    "day": "GIORNO 2",
+                    "exercise": "Military press - 3 serie x 10 ripetizioni - 40kg",
+                    "sets": 0,
+                    "reps": 0,
+                    "load": "N\/D"
+                },
+                {
+                    "id": 1760975909163.0366,
+                    "day": "GIORNO 2",
+                    "exercise": "Rematore - 4 serie x 10 ripetizioni - 50kg",
+                    "sets": 0,
+                    "reps": 0,
+                    "load": "N\/D"
+                }
+            ],
+            "uploadedWorkoutPlans": [],
+            "diet": [],
+            "dietPlan": {
+                "targetCalories": 2000,
+                "plan": []
+            },
+            "uploadedDietPlans": [],
+            "dailyCompliance": [],
+            "measurementsLog": []
+        },
+        "sleepStartTimestamp": null,
+        "displayUsername": "TESTUSER",
+        "userType": "user",
+        "updatedAt": "2025-10-20T15:58:29.163Z"
+    }
+}
