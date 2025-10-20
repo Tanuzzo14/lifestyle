@@ -64,25 +64,84 @@
     <div id="app" class="container mx-auto"></div>
 
     <script type="module">
-      // ---------- API Configuration ----------
-      const API_URL = 'api.php';
+      // ---------- LocalStorage-based Data Persistence ----------
+      // This replaces the PHP API for GitHub Pages deployment
       
-      // Helper per chiamate API
+      const STORAGE_KEY = 'lifestyle_data';
+      
+      // Helper to read all data from localStorage
+      function readAllData() {
+        try {
+          const data = localStorage.getItem(STORAGE_KEY);
+          return data ? JSON.parse(data) : {};
+        } catch (error) {
+          console.error('Errore lettura dati:', error);
+          return {};
+        }
+      }
+      
+      // Helper to write all data to localStorage
+      function writeAllData(data) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          return true;
+        } catch (error) {
+          console.error('Errore scrittura dati:', error);
+          return false;
+        }
+      }
+      
+      // API call emulation using localStorage
       async function apiCall(method, params = {}) {
         try {
-          const options = {
-            method: method,
-            headers: { 'Content-Type': 'application/json' }
-          };
+          const allData = readAllData();
           
           if (method === 'GET') {
-            const query = new URLSearchParams(params).toString();
-            const response = await fetch(`${API_URL}?${query}`, options);
-            return await response.json();
+            const userId = params.userId;
+            if (userId) {
+              // Return specific user data
+              const userData = allData[userId] || null;
+              return { success: true, data: userData };
+            } else {
+              // Return all data
+              return { success: true, data: allData };
+            }
+          } else if (method === 'POST' || method === 'PUT') {
+            // Save data
+            const userId = params.userId;
+            const userData = params.data;
+            
+            if (!userId || !userData) {
+              return { success: false, error: 'userId e data sono obbligatori' };
+            }
+            
+            allData[userId] = userData;
+            
+            if (writeAllData(allData)) {
+              return { success: true, message: 'Dati salvati con successo' };
+            } else {
+              return { success: false, error: 'Errore durante il salvataggio' };
+            }
+          } else if (method === 'DELETE') {
+            // Delete user data
+            const userId = params.userId;
+            
+            if (!userId) {
+              return { success: false, error: 'userId è obbligatorio' };
+            }
+            
+            if (allData[userId]) {
+              delete allData[userId];
+              if (writeAllData(allData)) {
+                return { success: true, message: 'Utente eliminato con successo' };
+              } else {
+                return { success: false, error: "Errore durante l'eliminazione" };
+              }
+            } else {
+              return { success: false, error: 'Utente non trovato' };
+            }
           } else {
-            options.body = JSON.stringify(params);
-            const response = await fetch(API_URL, options);
-            return await response.json();
+            return { success: false, error: 'Metodo non supportato' };
           }
         } catch (error) {
           console.error('Errore API:', error);
