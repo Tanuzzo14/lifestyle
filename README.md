@@ -1,39 +1,43 @@
 # Lifestyle Designer - Sistema di Gestione Dati
 
-## Modifiche Implementate
+## Sistema di Persistenza Dati
 
-Questo progetto è stato modificato per salvare tutti i dati in un file `data.json` locale invece di utilizzare Firebase.
+Questo progetto utilizza **localStorage** del browser per salvare tutti i dati dell'applicazione, rendendola compatibile con GitHub Pages e qualsiasi hosting di file statici.
 
-### File Creati
+## Deployment
 
-1. **api.php** - API REST per gestire la lettura e scrittura del file `data.json`
-   - Supporta metodi GET, POST, PUT, DELETE
-   - Gestisce CORS per chiamate cross-origin
-   - Struttura dati JSON organizzata per userId
+### GitHub Pages (Consigliato)
+L'applicazione è progettata per funzionare perfettamente su GitHub Pages senza bisogno di backend:
+1. Fare push del codice su GitHub
+2. Abilitare GitHub Pages nelle impostazioni del repository
+3. L'applicazione sarà accessibile su `https://username.github.io/repository-name/`
 
-### File Modificati
+### Hosting Locale
+Per testare in locale:
+```bash
+# Usando Python
+python3 -m http.server 8000
 
-1. **index.html** - Applicazione principale utente
-   - Rimosso Firebase SDK
-   - Implementato sistema di autenticazione basato su localStorage
-   - Tutte le chiamate API ora utilizzano `api.php`
-   - Hash password con funzione simpleHash per sicurezza base
+# Usando Node.js
+npx http-server -p 8000
 
-2. **pro.html** - Dashboard professionista
-   - Rimosso Firebase SDK
-   - Implementato sistema di gestione clienti tramite API locale
-   - Tutte le operazioni CRUD ora utilizzano `api.php`
+# Usando PHP (opzionale, api.php non necessario)
+php -S localhost:8000
+```
 
 ## Come Funziona
 
 ### Autenticazione
 
-Il sistema utilizza un approccio semplificato:
+Il sistema utilizza un approccio semplificato basato su localStorage:
 - Username viene convertito in un ID univoco tramite hash
-- Password viene hashata e salvata in `data.json`
+- Password viene hashata e salvata nel localStorage
 - Sessione utente salvata in localStorage del browser
+- Tutti i dati persistono nel browser dell'utente
 
-### Struttura dati.json
+### Struttura Dati in localStorage
+
+I dati vengono salvati nella chiave `lifestyle_data` del localStorage:
 
 ```json
 {
@@ -48,79 +52,85 @@ Il sistema utilizza un approccio semplificato:
       "dietPlan": {},
       "measurementsLog": [],
       "dailyCompliance": {}
-    }
+    },
+    "clients": []
   },
   "userId2": { ... }
 }
 ```
 
-### API Endpoints
+### API Simulata
 
-**GET** - Lettura dati
-- `api.php?userId=xxx` - Ottiene dati di un utente specifico
-- `api.php` - Ottiene tutti i dati (admin)
+L'applicazione include una funzione `apiCall()` che simula chiamate API ma opera interamente con localStorage:
+- **GET** - Lettura dati da localStorage
+- **POST/PUT** - Salvataggio dati in localStorage
+- **DELETE** - Eliminazione dati da localStorage
 
-**POST/PUT** - Salvataggio dati
-```json
-{
-  "userId": "xxx",
-  "data": { ... }
-}
-```
+## Caratteristiche
 
-**DELETE** - Eliminazione utente
-```json
-{
-  "userId": "xxx"
-}
-```
+### Per Utenti Normali
+- ✅ Registrazione e login
+- ✅ Monitoraggio abitudini giornaliere
+- ✅ Gestione piano di allenamento
+- ✅ Gestione piano dieta
+- ✅ Tracciamento misure corporee
+- ✅ Compliance giornaliera e mensile
+- ✅ Timer sonno con ipnogramma
 
-## Requisiti
-
-- Server web con supporto PHP (Apache, Nginx, ecc.)
-- PHP 7.0 o superiore
-- Permessi di scrittura nella directory per creare/modificare `data.json`
-
-## Installazione
-
-1. Caricare tutti i file su un server web con PHP
-2. Assicurarsi che la directory abbia permessi di scrittura:
-   ```bash
-   chmod 755 /percorso/della/directory
-   ```
-3. Il file `data.json` verrà creato automaticamente al primo utilizzo
+### Per Professionisti della Salute
+- ✅ Dashboard professionale
+- ✅ Gestione multipli clienti
+- ✅ Creazione account utenti
+- ✅ Modifica piani allenamento/dieta
+- ✅ Visualizzazione progressi clienti
 
 ## Sicurezza
 
 **NOTA IMPORTANTE**: Questo sistema è progettato per scopi dimostrativi/educativi. Per un ambiente di produzione, considerare:
-- Implementare un sistema di hash password più robusto (bcrypt, Argon2)
-- Utilizzare HTTPS per tutte le comunicazioni
-- Implementare rate limiting sull'API
-- Aggiungere validazione input lato server
-- Implementare sistema di sessioni PHP più sicuro
-- Backup automatici di data.json
-- Controllo accessi più granulare
+- ⚠️ I dati sono salvati in chiaro nel localStorage (accessibili via DevTools)
+- ⚠️ L'hash delle password usa una funzione semplice (non bcrypt/Argon2)
+- ⚠️ Non c'è sincronizzazione cloud - i dati sono solo locali al browser
+- ⚠️ Cancellando la cache/localStorage si perdono tutti i dati
+- ✅ Per produzione: implementare backend con database, autenticazione JWT, HTTPS
 
 ## Testing
 
 Per testare l'implementazione:
 1. Aprire `index.html` in un browser
-2. Registrare un nuovo utente
-3. Verificare che i dati vengano salvati in `data.json`
+2. Registrare un nuovo utente (tipo "Utente" o "Professionista della salute")
+3. I dati vengono salvati automaticamente in localStorage
 4. Effettuare logout e login per verificare la persistenza
+5. Controllare DevTools > Application > Local Storage per vedere i dati
 
 ## Troubleshooting
 
-### data.json non viene creato
-- Verificare i permessi della directory
-- Controllare i log del server PHP
-- Verificare che `allow_url_fopen` sia abilitato in php.ini
-
-### Errori CORS
-- Verificare che gli header CORS siano correttamente impostati in api.php
-- Se necessario, modificare `Access-Control-Allow-Origin` con il dominio specifico
-
-### Dati non persistenti
+### Dati non persistono
+- Verificare che il browser non stia in modalità incognito/privata
 - Controllare che il browser non stia bloccando localStorage
 - Verificare la console del browser per errori JavaScript
-- Controllare che api.php stia effettivamente salvando i dati
+- Controllare DevTools > Application > Local Storage per vedere se i dati sono presenti
+
+### Errori 405 o problemi con api.php
+- ✅ **RISOLTO**: L'applicazione ora non usa più api.php
+- Se vedete ancora errori 405, svuotate la cache del browser
+- L'applicazione funziona completamente con localStorage
+
+### Perdita dati
+- I dati sono salvati solo localmente nel browser
+- Cancellare cookie/cache cancella anche i dati
+- Per backup: esportare i dati dal localStorage manualmente
+
+## File del Progetto
+
+- **index.html** - Applicazione principale utente
+- **pro.html** - Dashboard professionista
+- **api.php** - File legacy (non più utilizzato su GitHub Pages)
+- **test_api.html** - Test API legacy (non più utilizzato)
+
+## Requisiti
+
+- Browser moderno con supporto per:
+  - localStorage API
+  - ES6+ JavaScript
+  - CSS Grid/Flexbox
+- Nessun server o backend richiesto!
