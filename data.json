@@ -9,7 +9,7 @@
                     "exercise": "PANCA PIANA",
                     "sets": 3,
                     "reps": 0,
-                    "load": "85"
+                    "load": "90"
                 }
             ],
             "uploadedWorkoutPlans": [],
@@ -25,6 +25,6 @@
         "sleepStartTimestamp": null,
         "displayUsername": "TESTUSER",
         "userType": "user",
-        "updatedAt": "2025-10-20T15:33:44.447Z"
+        "updatedAt": "2025-10-20T16:18:19.109Z"
     }
 }

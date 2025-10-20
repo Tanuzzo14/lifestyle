@@ -129,7 +129,8 @@
         error: null,
         editingWorkoutId: null,
         editingDietMeal: null,
-        viewingFile: null
+        viewingFile: null,
+        quickEditingWeightId: null
       };
 
       // ---------- UTILS ----------
@@ -576,6 +577,19 @@
           } else displayError('ERRORE: ESERCIZIO NON TROVATO.');
         },
         clearWorkoutPlan: function() { state.data.workout = []; saveAppState(); render(); displayError('PIANO DI ALLENAMENTO CANCELLATO.'); },
+
+        startQuickEditWeight: function(id) { state.quickEditingWeightId = id; render(); },
+        cancelQuickEditWeight: function() { state.quickEditingWeightId = null; render(); },
+        updateWeight: function(id, newLoad) {
+          const workout = state.data.workout.find(w => w.id === id);
+          if (workout) {
+            workout.load = newLoad ? newLoad.trim().toUpperCase() : 'N/D';
+            state.quickEditingWeightId = null;
+            saveAppState();
+            render();
+            displayError('CARICO AGGIORNATO!');
+          } else displayError('ERRORE: ESERCIZIO NON TROVATO.');
+        },
 
         setCaloricTarget: function(calories) {
           const target = parseInt(calories);
@@ -1080,6 +1094,18 @@ function renderRegister() {
                 </li>`;
             }
             // Read-only exercise
+            // Check if we're quick-editing weight for this exercise
+            const weightDisplay = state.quickEditingWeightId === w.id
+                ? `<form onsubmit="event.preventDefault(); window.app.updateWeight(${w.id}, this.newLoad.value);" class="inline-flex items-center space-x-1">
+                      <input type="text" name="newLoad" value="${w.load}" placeholder="CARICO" class="w-16 px-1 py-0.5 border rounded text-xs" autofocus>
+                      <button type="submit" class="text-green-600 hover:text-green-800 text-xs font-semibold">✓</button>
+                      <button type="button" onclick="window.app.cancelQuickEditWeight()" class="text-gray-500 hover:text-gray-700 text-xs">✕</button>
+                   </form>`
+                : `<span class="cursor-pointer hover:bg-yellow-100 px-1 rounded" onclick="window.app.startQuickEditWeight(${w.id})" title="Clicca per modificare il carico">
+                      ${w.load}
+                      <svg class="w-3 h-3 inline-block ml-0.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                   </span>`;
+            
             return `<li class="py-2 border-b last:border-b-0 text-sm">
                 <div class="flex justify-between items-center">
                     <span class="font-semibold">${w.exercise.toUpperCase()}</span>
@@ -1088,7 +1114,7 @@ function renderRegister() {
                         <button onclick="window.app.removeWorkout(${w.id})" class="text-red-500 hover:text-red-700 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m10 0h-12"></path></svg></button>
                     </div>
                 </div>
-                <p class="text-xs text-gray-600">GIORNO: ${w.day} | SERIE: ${w.sets} | REP: ${w.reps} | CARICO: ${w.load}</p>
+                <p class="text-xs text-gray-600">GIORNO: ${w.day} | SERIE: ${w.sets} | REP: ${w.reps} | CARICO: ${weightDisplay}</p>
             </li>`;
           }).join('');
           return `<div class="mb-4"><h4 class="text-xl font-bold text-blue-600">${day}</h4><ul class="space-y-1">${exercisesHTML}</ul></div>`;
