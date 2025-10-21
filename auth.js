@@ -268,6 +268,54 @@ export const Auth = {
         userType: userType
       };
 
+      // For base users (not pro), handle BASE_USER trainer assignment
+      let baseUserUid = null;
+      if (userType === "user") {
+        // Get or create BASE_USER
+        const baseUserKey = "base_user";
+        baseUserUid = simpleHash(baseUserKey).toString();
+        
+        let baseUserData = null;
+        try {
+          const result = await apiCall('GET', { userId: baseUserUid });
+          if (result.success && result.data) {
+            baseUserData = result.data;
+          }
+        } catch (err) {
+          console.error("Failed to check for BASE_USER:", err);
+        }
+        
+        // Create BASE_USER if it doesn't exist
+        if (!baseUserData) {
+          const baseUserPasswordHash = simpleHash("base_user_password").toString();
+          baseUserData = {
+            userType: "pro",
+            displayUsername: "BASE_USER",
+            passwordHash: baseUserPasswordHash,
+            clients: [],
+            data: {
+              habits: [],
+              workout: [],
+              uploadedWorkoutPlans: [],
+              diet: [],
+              dietPlan: { targetCalories: 2000, plan: [] },
+              uploadedDietPlans: [],
+              dailyCompliance: {},
+              measurementsLog: []
+            },
+            sleepStartTimestamp: null,
+            createdAt: new Date().toISOString()
+          };
+          
+          try {
+            await apiCall('POST', { userId: baseUserUid, data: baseUserData });
+            console.log('BASE_USER trainer created successfully');
+          } catch (err) {
+            console.error("Failed to create BASE_USER:", err);
+          }
+        }
+      }
+
       // Save user data
       const payload = {
         userType: userType, 
@@ -287,6 +335,11 @@ export const Auth = {
         sleepStartTimestamp: null,
         createdAt: new Date().toISOString()
       };
+      
+      // Add createdBy field for base users
+      if (userType === "user" && baseUserUid) {
+        payload.createdBy = baseUserUid;
+      }
       
       let savedToDataJson = false;
       
@@ -310,6 +363,26 @@ export const Auth = {
         } else {
           displayError('ERRORE DURANTE LA REGISTRAZIONE.');
           return null;
+        }
+      }
+      
+      // Add new user to BASE_USER's clients list
+      if (userType === "user" && baseUserUid && savedToDataJson) {
+        try {
+          const baseUserResult = await apiCall('GET', { userId: baseUserUid });
+          if (baseUserResult.success && baseUserResult.data) {
+            const baseUserData = baseUserResult.data;
+            baseUserData.clients = baseUserData.clients || [];
+            
+            // Check if user is not already in clients list
+            if (!baseUserData.clients.find(c => c.uid === uid)) {
+              baseUserData.clients.push({ uid: uid, username: user.username });
+              await apiCall('POST', { userId: baseUserUid, data: baseUserData });
+              console.log('User added to BASE_USER clients list');
+            }
+          }
+        } catch (err) {
+          console.error("Failed to add user to BASE_USER clients:", err);
         }
       }
       
