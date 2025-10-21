@@ -95,6 +95,112 @@
         }
       }
 
+      // ---------- OpenAI Integration for File Format Standardization ----------
+      const OPENAI_API_KEY = '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';
+      const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+
+      async function standardizeWorkoutWithOpenAI(textContent) {
+        try {
+          const systemPrompt = `You are a helpful assistant that converts workout plans to a standardized JSON format.
+The output must be a JSON array where each object has these fields:
+- day: string (e.g., "GIORNO A", "LUNEDÌ", "DAY 1")
+- exercise: string (name of the exercise)
+- sets: number (number of sets, default to 0 if not specified)
+- reps: number (number of reps, default to 0 if not specified)
+- load: string (weight/load, default to "N/D" if not specified)
+
+Convert any workout plan format (text, CSV, table, etc.) to this JSON format. All text values should be in UPPERCASE.`;
+
+          const response = await fetch(OPENAI_API_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: textContent }
+              ],
+              temperature: 0.3
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`OpenAI API error: ${response.status}`);
+          }
+
+          const data = await response.json();
+          const content = data.choices[0].message.content;
+          
+          // Extract JSON from response (might be wrapped in markdown code blocks)
+          let jsonText = content;
+          if (content.includes('```json')) {
+            jsonText = content.match(/```json\n([\s\S]*?)\n```/)[1];
+          } else if (content.includes('```')) {
+            jsonText = content.match(/```\n([\s\S]*?)\n```/)[1];
+          }
+          
+          return JSON.parse(jsonText);
+        } catch (error) {
+          console.error('Error standardizing workout with OpenAI:', error);
+          throw new Error('Impossibile standardizzare il piano con OpenAI: ' + error.message);
+        }
+      }
+
+      async function standardizeDietWithOpenAI(textContent) {
+        try {
+          const systemPrompt = `You are a helpful assistant that converts diet plans to a standardized JSON format.
+The output must be a JSON array where each object represents a day with these fields:
+- day: string (e.g., "LUNEDÌ", "MARTEDÌ", etc. - must be one of: LUNEDÌ, MARTEDÌ, MERCOLEDÌ, GIOVEDÌ, VENERDÌ, SABATO, DOMENICA)
+- meals: array of meal objects, each with:
+  - category: string (meal type, e.g., "COLAZIONE", "PRANZO", "CENA", "SPUNTINO")
+  - description: string (food description)
+  - weight: string (portion size, e.g., "150G", "200ML")
+  - type: string (food type/category, e.g., "RICETTA", "INTEGRATORE", "PROTEINA")
+  - calories: number (calories for this meal)
+
+Convert any diet plan format (text, CSV, table, etc.) to this JSON format. All text values should be in UPPERCASE.`;
+
+          const response = await fetch(OPENAI_API_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: textContent }
+              ],
+              temperature: 0.3
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`OpenAI API error: ${response.status}`);
+          }
+
+          const data = await response.json();
+          const content = data.choices[0].message.content;
+          
+          // Extract JSON from response (might be wrapped in markdown code blocks)
+          let jsonText = content;
+          if (content.includes('```json')) {
+            jsonText = content.match(/```json\n([\s\S]*?)\n```/)[1];
+          } else if (content.includes('```')) {
+            jsonText = content.match(/```\n([\s\S]*?)\n```/)[1];
+          }
+          
+          return JSON.parse(jsonText);
+        } catch (error) {
+          console.error('Error standardizing diet with OpenAI:', error);
+          throw new Error('Impossibile standardizzare il piano dieta con OpenAI: ' + error.message);
+        }
+      }
+
       // NUOVA FUNZIONE HELPER PER IL REDIRECT
       async function redirectToProDashboard() {
         try {
@@ -469,19 +575,66 @@
         },
         removeWorkout: function(id) { state.data.workout = state.data.workout.filter(w => w.id !== id); saveAppState(); render(); },
 
-        uploadWorkoutFile: function(event) {
+        uploadWorkoutFile: async function(event) {
           const file = event.target.files[0];
           if (!file) return;
+          
+          displayError('CARICAMENTO FILE IN CORSO...');
+          
           const reader = new FileReader();
-          reader.onload = function(e) {
-            const fileData = { id: Date.now(), name: file.name.toUpperCase(), type: file.type, dataUrl: e.target.result };
-            state.data.uploadedWorkoutPlans.push(fileData);
-            saveAppState();
-            render();
-            displayError(`FILE '${file.name.toUpperCase()}' CARICATO CON SUCCESSO.`);
+          reader.onload = async function(e) {
+            try {
+              // Store the original file
+              const fileData = { id: Date.now(), name: file.name.toUpperCase(), type: file.type, dataUrl: e.target.result };
+              state.data.uploadedWorkoutPlans.push(fileData);
+              
+              // Extract text content from the file
+              let textContent = '';
+              if (file.type === 'text/plain' || file.type === 'text/csv' || file.name.endsWith('.txt') || file.name.endsWith('.csv')) {
+                textContent = e.target.result;
+              } else if (file.type === 'application/json' || file.name.endsWith('.json')) {
+                textContent = e.target.result;
+              } else {
+                // For other file types (PDF, DOC, etc.), try to extract text from base64
+                const base64Data = e.target.result.split(',')[1];
+                const binaryString = atob(base64Data);
+                textContent = binaryString;
+              }
+              
+              // Use OpenAI to standardize the workout plan
+              displayError('STANDARDIZZAZIONE PIANO CON OPENAI...');
+              const standardizedData = await standardizeWorkoutWithOpenAI(textContent);
+              
+              // Add the standardized data to the workout plan
+              if (standardizedData && Array.isArray(standardizedData) && standardizedData.length > 0) {
+                standardizedData.forEach(item => {
+                  state.data.workout.push({
+                    id: Date.now() + Math.random(),
+                    day: item.day?.toUpperCase() || 'NON SPECIFICATO',
+                    exercise: item.exercise?.toUpperCase() || 'NON SPECIFICATO',
+                    sets: parseInt(item.sets) || 0,
+                    reps: parseInt(item.reps) || 0,
+                    load: item.load ? item.load.toString().toUpperCase() : 'N/D'
+                  });
+                });
+              }
+              
+              saveAppState();
+              render();
+              displayError(`FILE '${file.name.toUpperCase()}' CARICATO E STANDARDIZZATO (${standardizedData.length} ESERCIZI).`);
+            } catch (error) {
+              console.error('Error processing workout file:', error);
+              displayError('ERRORE STANDARDIZZAZIONE: ' + error.message.toUpperCase());
+            }
           };
           reader.onerror = function(){ displayError('ERRORE DURANTE LA LETTURA DEL FILE.'); };
-          reader.readAsDataURL(file);
+          
+          // Read as text for text-based files, otherwise as data URL
+          if (file.type === 'text/plain' || file.type === 'text/csv' || file.name.endsWith('.txt') || file.name.endsWith('.csv') || file.name.endsWith('.json')) {
+            reader.readAsText(file);
+          } else {
+            reader.readAsDataURL(file);
+          }
           event.target.value = '';
         },
         removeUploadedWorkoutFile: function(id) {
@@ -498,58 +651,81 @@
           render();
         },
 
-        importWorkoutPlan: function(textContent) {
+        importWorkoutPlan: async function(textContent) {
           try {
+            displayError('IMPORTAZIONE IN CORSO...');
             let newWorkoutData = [];
             const content = textContent.trim();
-            if (content.startsWith('[')) {
-              const newPlan = JSON.parse(content);
-              if (!Array.isArray(newPlan)) throw new Error('Il formato JSON deve essere un array.');
-              newWorkoutData = newPlan.map(item => ({
-                id: Date.now() + Math.random(),
-                day: item.day?.toUpperCase() || 'NON SPECIFICATO',
-                exercise: item.exercise?.toUpperCase() || 'NON SPECIFICATO',
-                sets: parseInt(item.sets) || 0,
-                reps: parseInt(item.reps) || 0,
-                load: item.load ? item.load.trim().toUpperCase() : 'N/D'
-              }));
-            } else if (content.includes(',') && content.split('\n')[0].split(',').length >= 3) {
-              const rows = content.split('\n');
-              rows.forEach(line => {
-                const [day, exercise, sets, reps, load] = line.split(',').map(s => s.trim());
-                if (day && exercise && !isNaN(sets) && !isNaN(reps)) {
-                  newWorkoutData.push({
-                    id: Date.now() + Math.random(),
-                    day: day.toUpperCase(),
-                    exercise: exercise.toUpperCase(),
-                    sets: parseInt(sets),
-                    reps: parseInt(reps),
-                    load: load ? load.toUpperCase() : 'N/D'
-                  });
-                }
-              });
-            } else {
-              const lines = content.split('\n');
-              let currentDay = 'NOTE / PRE-ALLENAMENTO';
-              lines.forEach(line => {
-                const trimmedLine = line.trim();
-                if (!trimmedLine) return;
-                const dayMatch = trimmedLine.match(/^(GIORNO\s*\d+.*)/i);
-                if (dayMatch) {
-                  currentDay = dayMatch[1].replace(':','').trim().toUpperCase();
-                } else if (trimmedLine.length > 2) {
-                  const exerciseText = trimmedLine.replace(/^[-•*]\s*/, '').trim();
-                  newWorkoutData.push({
-                    id: Date.now() + Math.random(),
-                    day: currentDay,
-                    exercise: exerciseText,
-                    sets: 0,
-                    reps: 0,
-                    load: 'N/D'
-                  });
-                }
-              });
+            
+            // First, try to use OpenAI for standardization
+            try {
+              displayError('STANDARDIZZAZIONE CON OPENAI...');
+              const standardizedData = await standardizeWorkoutWithOpenAI(content);
+              if (standardizedData && Array.isArray(standardizedData) && standardizedData.length > 0) {
+                newWorkoutData = standardizedData.map(item => ({
+                  id: Date.now() + Math.random(),
+                  day: item.day?.toUpperCase() || 'NON SPECIFICATO',
+                  exercise: item.exercise?.toUpperCase() || 'NON SPECIFICATO',
+                  sets: parseInt(item.sets) || 0,
+                  reps: parseInt(item.reps) || 0,
+                  load: item.load ? item.load.toString().toUpperCase() : 'N/D'
+                }));
+              }
+            } catch (openaiError) {
+              console.log('OpenAI standardization failed, falling back to manual parsing:', openaiError);
+              displayError('FALLBACK A PARSING MANUALE...');
+              
+              // Fallback to original parsing logic
+              if (content.startsWith('[')) {
+                const newPlan = JSON.parse(content);
+                if (!Array.isArray(newPlan)) throw new Error('Il formato JSON deve essere un array.');
+                newWorkoutData = newPlan.map(item => ({
+                  id: Date.now() + Math.random(),
+                  day: item.day?.toUpperCase() || 'NON SPECIFICATO',
+                  exercise: item.exercise?.toUpperCase() || 'NON SPECIFICATO',
+                  sets: parseInt(item.sets) || 0,
+                  reps: parseInt(item.reps) || 0,
+                  load: item.load ? item.load.trim().toUpperCase() : 'N/D'
+                }));
+              } else if (content.includes(',') && content.split('\n')[0].split(',').length >= 3) {
+                const rows = content.split('\n');
+                rows.forEach(line => {
+                  const [day, exercise, sets, reps, load] = line.split(',').map(s => s.trim());
+                  if (day && exercise && !isNaN(sets) && !isNaN(reps)) {
+                    newWorkoutData.push({
+                      id: Date.now() + Math.random(),
+                      day: day.toUpperCase(),
+                      exercise: exercise.toUpperCase(),
+                      sets: parseInt(sets),
+                      reps: parseInt(reps),
+                      load: load ? load.toUpperCase() : 'N/D'
+                    });
+                  }
+                });
+              } else {
+                const lines = content.split('\n');
+                let currentDay = 'NOTE / PRE-ALLENAMENTO';
+                lines.forEach(line => {
+                  const trimmedLine = line.trim();
+                  if (!trimmedLine) return;
+                  const dayMatch = trimmedLine.match(/^(GIORNO\s*\d+.*)/i);
+                  if (dayMatch) {
+                    currentDay = dayMatch[1].replace(':','').trim().toUpperCase();
+                  } else if (trimmedLine.length > 2) {
+                    const exerciseText = trimmedLine.replace(/^[-•*]\s*/, '').trim();
+                    newWorkoutData.push({
+                      id: Date.now() + Math.random(),
+                      day: currentDay,
+                      exercise: exerciseText,
+                      sets: 0,
+                      reps: 0,
+                      load: 'N/D'
+                    });
+                  }
+                });
+              }
             }
+            
             if (newWorkoutData.length === 0) throw new Error('Nessun dato valido trovato nel testo.');
             state.data.workout = newWorkoutData;
             saveAppState();
@@ -600,28 +776,44 @@
           render();
         },
 
-        importDietPlan: function(textContent) {
+        importDietPlan: async function(textContent) {
           try {
+            displayError('IMPORTAZIONE PIANO DIETA IN CORSO...');
             let newPlanGrouped = [];
             const content = textContent.trim();
-            const dayLabels = ['LUNEDÌ','MARTEDÌ','MERCOLEDÌ','GIOVEDÌ','VENERDÌ','SABATO','DOMENICA'];
-            const groupedByDay = {};
-            const rows = content.split('\n');
-            rows.forEach(line => {
-              const parts = line.split(',').map(s => s.trim().toUpperCase());
-              // Format: GIORNO, CATEGORIA (TIPOLOGIA), DESCRIZIONE, GRAMMATURA (WEIGHT), TIPOLOGIA (ALTRO), KCAL
-              if (parts.length >= 6 && dayLabels.includes(parts[0])) {
-                const [day, category, description, weight, type, calories] = parts;
-                const parsedCalories = parseInt(calories);
-                if (day && category && description && weight && type && !isNaN(parsedCalories) && parsedCalories > 0) {
-                  const dayKey = day.toUpperCase();
-                  if (!groupedByDay[dayKey]) groupedByDay[dayKey] = { day: dayKey, meals: [] };
-                  // Note: category is TIPOLOGIA, type is ALTRO
-                  groupedByDay[dayKey].meals.push({ category, description, weight, type, calories: parsedCalories });
-                }
+            
+            // First, try to use OpenAI for standardization
+            try {
+              displayError('STANDARDIZZAZIONE DIETA CON OPENAI...');
+              const standardizedData = await standardizeDietWithOpenAI(content);
+              if (standardizedData && Array.isArray(standardizedData) && standardizedData.length > 0) {
+                newPlanGrouped = standardizedData;
               }
-            });
-            newPlanGrouped = Object.values(groupedByDay);
+            } catch (openaiError) {
+              console.log('OpenAI standardization failed, falling back to manual parsing:', openaiError);
+              displayError('FALLBACK A PARSING MANUALE...');
+              
+              // Fallback to original parsing logic
+              const dayLabels = ['LUNEDÌ','MARTEDÌ','MERCOLEDÌ','GIOVEDÌ','VENERDÌ','SABATO','DOMENICA'];
+              const groupedByDay = {};
+              const rows = content.split('\n');
+              rows.forEach(line => {
+                const parts = line.split(',').map(s => s.trim().toUpperCase());
+                // Format: GIORNO, CATEGORIA (TIPOLOGIA), DESCRIZIONE, GRAMMATURA (WEIGHT), TIPOLOGIA (ALTRO), KCAL
+                if (parts.length >= 6 && dayLabels.includes(parts[0])) {
+                  const [day, category, description, weight, type, calories] = parts;
+                  const parsedCalories = parseInt(calories);
+                  if (day && category && description && weight && type && !isNaN(parsedCalories) && parsedCalories > 0) {
+                    const dayKey = day.toUpperCase();
+                    if (!groupedByDay[dayKey]) groupedByDay[dayKey] = { day: dayKey, meals: [] };
+                    // Note: category is TIPOLOGIA, type is ALTRO
+                    groupedByDay[dayKey].meals.push({ category, description, weight, type, calories: parsedCalories });
+                  }
+                }
+              });
+              newPlanGrouped = Object.values(groupedByDay);
+            }
+            
             if (newPlanGrouped.length === 0) throw new Error('NESSUN DATO VALIDO TROVATO. FORMATO ATTESO: GIORNO, TIPOLOGIA, DESCRIZIONE, GRAMMATURA, ALTRO, KCAL.');
             state.data.dietPlan.plan = newPlanGrouped;
             saveAppState();
@@ -685,19 +877,57 @@
 
         clearDietPlan: function() { state.data.dietPlan.plan = []; saveAppState(); render(); displayError('PIANO DIETA CANCELLATO.'); },
 
-        uploadDietFile: function(event) {
+        uploadDietFile: async function(event) {
           const file = event.target.files[0];
           if (!file) return;
+          
+          displayError('CARICAMENTO FILE DIETA IN CORSO...');
+          
           const reader = new FileReader();
-          reader.onload = function(e) {
-            const fileData = { id: Date.now(), name: file.name.toUpperCase(), type: file.type, dataUrl: e.target.result };
-            state.data.uploadedDietPlans.push(fileData);
-            saveAppState();
-            render();
-            displayError(`FILE DIETA '${file.name.toUpperCase()}' CARICATO.`);
+          reader.onload = async function(e) {
+            try {
+              // Store the original file
+              const fileData = { id: Date.now(), name: file.name.toUpperCase(), type: file.type, dataUrl: e.target.result };
+              state.data.uploadedDietPlans.push(fileData);
+              
+              // Extract text content from the file
+              let textContent = '';
+              if (file.type === 'text/plain' || file.type === 'text/csv' || file.name.endsWith('.txt') || file.name.endsWith('.csv')) {
+                textContent = e.target.result;
+              } else if (file.type === 'application/json' || file.name.endsWith('.json')) {
+                textContent = e.target.result;
+              } else {
+                // For other file types (PDF, DOC, etc.), try to extract text from base64
+                const base64Data = e.target.result.split(',')[1];
+                const binaryString = atob(base64Data);
+                textContent = binaryString;
+              }
+              
+              // Use OpenAI to standardize the diet plan
+              displayError('STANDARDIZZAZIONE PIANO DIETA CON OPENAI...');
+              const standardizedData = await standardizeDietWithOpenAI(textContent);
+              
+              // Add the standardized data to the diet plan
+              if (standardizedData && Array.isArray(standardizedData) && standardizedData.length > 0) {
+                state.data.dietPlan.plan = standardizedData;
+              }
+              
+              saveAppState();
+              render();
+              displayError(`FILE DIETA '${file.name.toUpperCase()}' CARICATO E STANDARDIZZATO (${standardizedData.length} GIORNI).`);
+            } catch (error) {
+              console.error('Error processing diet file:', error);
+              displayError('ERRORE STANDARDIZZAZIONE DIETA: ' + error.message.toUpperCase());
+            }
           };
           reader.onerror = function(){ displayError('ERRORE DURANTE LA LETTURA DEL FILE.'); };
-          reader.readAsDataURL(file);
+          
+          // Read as text for text-based files, otherwise as data URL
+          if (file.type === 'text/plain' || file.type === 'text/csv' || file.name.endsWith('.txt') || file.name.endsWith('.csv') || file.name.endsWith('.json')) {
+            reader.readAsText(file);
+          } else {
+            reader.readAsDataURL(file);
+          }
           event.target.value = '';
         },
         removeUploadedDietFile: function(id) { state.data.uploadedDietPlans = state.data.uploadedDietPlans.filter(p => p.id !== id); saveAppState(); render(); displayError('FILE PIANO DIETA RIMOSSO.'); },

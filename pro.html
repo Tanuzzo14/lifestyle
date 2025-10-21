@@ -66,6 +66,112 @@ async function apiCall(method, params = {}) {
   }
 }
 
+// ---------- OpenAI Integration for File Format Standardization ----------
+const OPENAI_API_KEY = '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';
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+
+async function standardizeWorkoutWithOpenAI(textContent) {
+  try {
+    const systemPrompt = `You are a helpful assistant that converts workout plans to a standardized JSON format.
+The output must be a JSON array where each object has these fields:
+- day: string (e.g., "GIORNO A", "LUNEDÌ", "DAY 1")
+- exercise: string (name of the exercise)
+- sets: number (number of sets, default to 0 if not specified)
+- reps: number (number of reps, default to 0 if not specified)
+- load: string (weight/load, default to "N/D" if not specified)
+
+Convert any workout plan format (text, CSV, table, etc.) to this JSON format. All text values should be in UPPERCASE.`;
+
+    const response = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: textContent }
+        ],
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    
+    // Extract JSON from response (might be wrapped in markdown code blocks)
+    let jsonText = content;
+    if (content.includes('```json')) {
+      jsonText = content.match(/```json\n([\s\S]*?)\n```/)[1];
+    } else if (content.includes('```')) {
+      jsonText = content.match(/```\n([\s\S]*?)\n```/)[1];
+    }
+    
+    return JSON.parse(jsonText);
+  } catch (error) {
+    console.error('Error standardizing workout with OpenAI:', error);
+    throw new Error('Impossibile standardizzare il piano con OpenAI: ' + error.message);
+  }
+}
+
+async function standardizeDietWithOpenAI(textContent) {
+  try {
+    const systemPrompt = `You are a helpful assistant that converts diet plans to a standardized JSON format.
+The output must be a JSON array where each object represents a day with these fields:
+- day: string (e.g., "LUNEDÌ", "MARTEDÌ", etc. - must be one of: LUNEDÌ, MARTEDÌ, MERCOLEDÌ, GIOVEDÌ, VENERDÌ, SABATO, DOMENICA)
+- meals: array of meal objects, each with:
+  - category: string (meal type, e.g., "COLAZIONE", "PRANZO", "CENA", "SPUNTINO")
+  - description: string (food description)
+  - weight: string (portion size, e.g., "150G", "200ML")
+  - type: string (food type/category, e.g., "RICETTA", "INTEGRATORE", "PROTEINA")
+  - calories: number (calories for this meal)
+
+Convert any diet plan format (text, CSV, table, etc.) to this JSON format. All text values should be in UPPERCASE.`;
+
+    const response = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: textContent }
+        ],
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    
+    // Extract JSON from response (might be wrapped in markdown code blocks)
+    let jsonText = content;
+    if (content.includes('```json')) {
+      jsonText = content.match(/```json\n([\s\S]*?)\n```/)[1];
+    } else if (content.includes('```')) {
+      jsonText = content.match(/```\n([\s\S]*?)\n```/)[1];
+    }
+    
+    return JSON.parse(jsonText);
+  } catch (error) {
+    console.error('Error standardizing diet with OpenAI:', error);
+    throw new Error('Impossibile standardizzare il piano dieta con OpenAI: ' + error.message);
+  }
+}
+
 // Simple hash function
 function simpleHash(str) {
   let hash = 0;
@@ -838,28 +944,163 @@ const proApp = {
   async importWorkoutPlan(uid, rawText) {
       if (!uid) return;
       console.log(`Tentativo di importazione Allenamento per ${uid}`, rawText);
-      alert(`Importazione Allenamento per ${uid} (testo: ${rawText.substring(0, 30)}...). Logica di parsing e salvataggio da implementare. Se implementata, aggiornare il campo 'data.workout' del cliente.`);
-      // Qui andrebbe la logica di parsing (CSV, JSON, ecc.) e salvataggio.
-      // Esempio di aggiornamento: await updateDoc(this.getUserDocRef(uid), { 'data.workout': newParsedWorkoutArray });
-      // Dopo il salvataggio: await this.loadClientsData(); 
-      this.openEditClientModal(uid, 'workout'); // Torna alla vista Allenamento
+      
+      try {
+        const clientData = this.clientsData[uid];
+        if (!clientData) {
+          alert(`Cliente ${uid} non trovato.`);
+          return;
+        }
+        
+        // Use OpenAI to standardize the workout plan
+        const standardizedData = await standardizeWorkoutWithOpenAI(rawText);
+        
+        if (standardizedData && Array.isArray(standardizedData) && standardizedData.length > 0) {
+          // Convert to internal format
+          const workoutData = standardizedData.map(item => ({
+            id: Date.now() + Math.random(),
+            day: item.day?.toUpperCase() || 'NON SPECIFICATO',
+            exercise: item.exercise?.toUpperCase() || 'NON SPECIFICATO',
+            sets: parseInt(item.sets) || 0,
+            reps: parseInt(item.reps) || 0,
+            load: item.load ? item.load.toString().toUpperCase() : 'N/D'
+          }));
+          
+          // Update client data
+          clientData.data.workout = workoutData;
+          await apiCall('POST', { userId: uid, data: clientData });
+          
+          // Refresh data
+          this.clientsData[uid].data.workout = workoutData;
+          alert(`Piano allenamento importato e standardizzato con successo (${workoutData.length} esercizi).`);
+        } else {
+          alert('Nessun dato valido trovato nel testo.');
+        }
+      } catch (error) {
+        console.error('Error importing workout plan:', error);
+        alert('Errore durante l\'importazione: ' + error.message);
+      }
+      
+      this.openEditClientModal(uid, 'workout');
   },
 
   async importDietPlan(uid, rawText) {
       if (!uid) return;
       console.log(`Tentativo di importazione Dieta per ${uid}`, rawText);
-      alert(`Importazione Dieta per ${uid} (testo: ${rawText.substring(0, 30)}...). Logica di parsing e salvataggio da implementare. Se implementata, aggiornare il campo 'data.dietPlan.plan' del cliente.`);
-      // Qui andrebbe la logica di parsing (CSV, JSON, ecc.) e salvataggio.
-      // Esempio di aggiornamento: await updateDoc(this.getUserDocRef(uid), { 'data.dietPlan.plan': newParsedDietPlanArray });
-      // Dopo il salvataggio: await this.loadClientsData(); 
-      this.openEditClientModal(uid, 'diet'); // Torna alla vista Dieta
+      
+      try {
+        const clientData = this.clientsData[uid];
+        if (!clientData) {
+          alert(`Cliente ${uid} non trovato.`);
+          return;
+        }
+        
+        // Use OpenAI to standardize the diet plan
+        const standardizedData = await standardizeDietWithOpenAI(rawText);
+        
+        if (standardizedData && Array.isArray(standardizedData) && standardizedData.length > 0) {
+          // Update client data
+          if (!clientData.data.dietPlan) {
+            clientData.data.dietPlan = { targetCalories: 2000, plan: [] };
+          }
+          clientData.data.dietPlan.plan = standardizedData;
+          await apiCall('POST', { userId: uid, data: clientData });
+          
+          // Refresh data
+          this.clientsData[uid].data.dietPlan.plan = standardizedData;
+          alert(`Piano dieta importato e standardizzato con successo (${standardizedData.length} giorni).`);
+        } else {
+          alert('Nessun dato valido trovato nel testo.');
+        }
+      } catch (error) {
+        console.error('Error importing diet plan:', error);
+        alert('Errore durante l\'importazione: ' + error.message);
+      }
+      
+      this.openEditClientModal(uid, 'diet');
   },
   
-  uploadFile(event, uid, type) {
+  async uploadFile(event, uid, type) {
       const file = event.target.files[0];
-      if (file) {
-          console.log(`Caricamento file ${file.name} per ${uid} (${type})`);
-          alert(`Caricamento file ${file.name} per ${uid} (${type}). Logica di caricamento (es. Firebase Storage) e parsing da implementare.`);
+      if (!file) return;
+      
+      console.log(`Caricamento file ${file.name} per ${uid} (${type})`);
+      
+      try {
+        const clientData = this.clientsData[uid];
+        if (!clientData) {
+          alert(`Cliente ${uid} non trovato.`);
+          return;
+        }
+        
+        // Read file content
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            let textContent = '';
+            if (file.type === 'text/plain' || file.type === 'text/csv' || file.name.endsWith('.txt') || file.name.endsWith('.csv')) {
+              textContent = e.target.result;
+            } else if (file.type === 'application/json' || file.name.endsWith('.json')) {
+              textContent = e.target.result;
+            } else {
+              // For other file types, try to extract text from base64
+              const base64Data = e.target.result.split(',')[1];
+              const binaryString = atob(base64Data);
+              textContent = binaryString;
+            }
+            
+            if (type === 'workout') {
+              // Use OpenAI to standardize the workout plan
+              const standardizedData = await standardizeWorkoutWithOpenAI(textContent);
+              
+              if (standardizedData && Array.isArray(standardizedData) && standardizedData.length > 0) {
+                const workoutData = standardizedData.map(item => ({
+                  id: Date.now() + Math.random(),
+                  day: item.day?.toUpperCase() || 'NON SPECIFICATO',
+                  exercise: item.exercise?.toUpperCase() || 'NON SPECIFICATO',
+                  sets: parseInt(item.sets) || 0,
+                  reps: parseInt(item.reps) || 0,
+                  load: item.load ? item.load.toString().toUpperCase() : 'N/D'
+                }));
+                
+                clientData.data.workout = workoutData;
+                await apiCall('POST', { userId: uid, data: clientData });
+                this.clientsData[uid].data.workout = workoutData;
+                alert(`File ${file.name} caricato e standardizzato (${workoutData.length} esercizi).`);
+              }
+            } else if (type === 'diet') {
+              // Use OpenAI to standardize the diet plan
+              const standardizedData = await standardizeDietWithOpenAI(textContent);
+              
+              if (standardizedData && Array.isArray(standardizedData) && standardizedData.length > 0) {
+                if (!clientData.data.dietPlan) {
+                  clientData.data.dietPlan = { targetCalories: 2000, plan: [] };
+                }
+                clientData.data.dietPlan.plan = standardizedData;
+                await apiCall('POST', { userId: uid, data: clientData });
+                this.clientsData[uid].data.dietPlan.plan = standardizedData;
+                alert(`File ${file.name} caricato e standardizzato (${standardizedData.length} giorni).`);
+              }
+            }
+            
+            this.openEditClientModal(uid, type);
+          } catch (error) {
+            console.error('Error processing file:', error);
+            alert('Errore durante l\'elaborazione del file: ' + error.message);
+          }
+        };
+        
+        // Read as text for text-based files, otherwise as data URL
+        if (file.type === 'text/plain' || file.type === 'text/csv' || file.name.endsWith('.txt') || file.name.endsWith('.csv') || file.name.endsWith('.json')) {
+          reader.readAsText(file);
+        } else {
+          reader.readAsDataURL(file);
+        }
+        
+        event.target.value = '';
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        alert('Errore durante il caricamento del file: ' + error.message);
       }
   },
   // FINE NUOVE FUNZIONI CRUD
