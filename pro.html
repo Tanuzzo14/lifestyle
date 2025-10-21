@@ -66,13 +66,13 @@ async function apiCall(method, params = {}) {
   }
 }
 
-// ---------- OpenAI Integration for File Format Standardization ----------
-const OPENAI_API_KEY = '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';
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+// ---------- Gemini Integration for File Format Standardization ----------
+const GEMINI_API_KEY = 'AIzaSyBWKDMj9eNMw4WwZ4E1Cso6PwqqcVsWKg8';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
-async function standardizeWorkoutWithOpenAI(textContent) {
+async function standardizeWorkoutWithGemini(textContent) {
   try {
-    const systemPrompt = `You are a helpful assistant that converts workout plans to a standardized JSON format.
+    const prompt = `You are a helpful assistant that converts workout plans to a standardized JSON format.
 The output must be a JSON array where each object has these fields:
 - day: string (e.g., "GIORNO A", "LUNEDÌ", "DAY 1")
 - exercise: string (name of the exercise)
@@ -80,30 +80,35 @@ The output must be a JSON array where each object has these fields:
 - reps: number (number of reps, default to 0 if not specified)
 - load: string (weight/load, default to "N/D" if not specified)
 
-Convert any workout plan format (text, CSV, table, etc.) to this JSON format. All text values should be in UPPERCASE.`;
+Convert any workout plan format (text, CSV, table, etc.) to this JSON format. All text values should be in UPPERCASE.
 
-    const response = await fetch(OPENAI_API_URL, {
+Input:
+${textContent}`;
+
+    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: textContent }
-        ],
-        temperature: 0.3
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt
+              }
+            ]
+          }
+        ]
       })
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
+    const content = data.candidates[0].content.parts[0].text;
     
     // Extract JSON from response (might be wrapped in markdown code blocks)
     let jsonText = content;
@@ -115,14 +120,14 @@ Convert any workout plan format (text, CSV, table, etc.) to this JSON format. Al
     
     return JSON.parse(jsonText);
   } catch (error) {
-    console.error('Error standardizing workout with OpenAI:', error);
-    throw new Error('Impossibile standardizzare il piano con OpenAI: ' + error.message);
+    console.error('Error standardizing workout with Gemini:', error);
+    throw new Error('Impossibile standardizzare il piano con Gemini: ' + error.message);
   }
 }
 
-async function standardizeDietWithOpenAI(textContent) {
+async function standardizeDietWithGemini(textContent) {
   try {
-    const systemPrompt = `You are a helpful assistant that converts diet plans to a standardized JSON format.
+    const prompt = `You are a helpful assistant that converts diet plans to a standardized JSON format.
 The output must be a JSON array where each object represents a day with these fields:
 - day: string (e.g., "LUNEDÌ", "MARTEDÌ", etc. - must be one of: LUNEDÌ, MARTEDÌ, MERCOLEDÌ, GIOVEDÌ, VENERDÌ, SABATO, DOMENICA)
 - meals: array of meal objects, each with:
@@ -132,30 +137,35 @@ The output must be a JSON array where each object represents a day with these fi
   - type: string (food type/category, e.g., "RICETTA", "INTEGRATORE", "PROTEINA")
   - calories: number (calories for this meal)
 
-Convert any diet plan format (text, CSV, table, etc.) to this JSON format. All text values should be in UPPERCASE.`;
+Convert any diet plan format (text, CSV, table, etc.) to this JSON format. All text values should be in UPPERCASE.
 
-    const response = await fetch(OPENAI_API_URL, {
+Input:
+${textContent}`;
+
+    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: textContent }
-        ],
-        temperature: 0.3
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt
+              }
+            ]
+          }
+        ]
       })
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
+    const content = data.candidates[0].content.parts[0].text;
     
     // Extract JSON from response (might be wrapped in markdown code blocks)
     let jsonText = content;
@@ -167,8 +177,8 @@ Convert any diet plan format (text, CSV, table, etc.) to this JSON format. All t
     
     return JSON.parse(jsonText);
   } catch (error) {
-    console.error('Error standardizing diet with OpenAI:', error);
-    throw new Error('Impossibile standardizzare il piano dieta con OpenAI: ' + error.message);
+    console.error('Error standardizing diet with Gemini:', error);
+    throw new Error('Impossibile standardizzare il piano dieta con Gemini: ' + error.message);
   }
 }
 
@@ -952,8 +962,8 @@ const proApp = {
           return;
         }
         
-        // Use OpenAI to standardize the workout plan
-        const standardizedData = await standardizeWorkoutWithOpenAI(rawText);
+        // Use Gemini to standardize the workout plan
+        const standardizedData = await standardizeWorkoutWithGemini(rawText);
         
         if (standardizedData && Array.isArray(standardizedData) && standardizedData.length > 0) {
           // Convert to internal format
@@ -995,8 +1005,8 @@ const proApp = {
           return;
         }
         
-        // Use OpenAI to standardize the diet plan
-        const standardizedData = await standardizeDietWithOpenAI(rawText);
+        // Use Gemini to standardize the diet plan
+        const standardizedData = await standardizeDietWithGemini(rawText);
         
         if (standardizedData && Array.isArray(standardizedData) && standardizedData.length > 0) {
           // Update client data
@@ -1050,8 +1060,8 @@ const proApp = {
             }
             
             if (type === 'workout') {
-              // Use OpenAI to standardize the workout plan
-              const standardizedData = await standardizeWorkoutWithOpenAI(textContent);
+              // Use Gemini to standardize the workout plan
+              const standardizedData = await standardizeWorkoutWithGemini(textContent);
               
               if (standardizedData && Array.isArray(standardizedData) && standardizedData.length > 0) {
                 const workoutData = standardizedData.map(item => ({
@@ -1069,8 +1079,8 @@ const proApp = {
                 alert(`File ${file.name} caricato e standardizzato (${workoutData.length} esercizi).`);
               }
             } else if (type === 'diet') {
-              // Use OpenAI to standardize the diet plan
-              const standardizedData = await standardizeDietWithOpenAI(textContent);
+              // Use Gemini to standardize the diet plan
+              const standardizedData = await standardizeDietWithGemini(textContent);
               
               if (standardizedData && Array.isArray(standardizedData) && standardizedData.length > 0) {
                 if (!clientData.data.dietPlan) {

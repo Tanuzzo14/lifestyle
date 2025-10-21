@@ -1,8 +1,8 @@
-# OpenAI Integration per Standardizzazione Formati
+# Gemini Integration per Standardizzazione Formati
 
 ## Panoramica
 
-Questa integrazione utilizza l'API di OpenAI (GPT-4o-mini) per standardizzare automaticamente tutti i formati di file importati nel sistema Lifestyle Designer, convertendoli nel formato JSON utilizzato dall'applicazione.
+Questa integrazione utilizza l'API di Google Gemini (gemini-2.0-flash) per standardizzare automaticamente tutti i formati di file importati nel sistema Lifestyle Designer, convertendoli nel formato JSON utilizzato dall'applicazione.
 
 ## Funzionalità Implementate
 
@@ -59,10 +59,10 @@ Questa integrazione utilizza l'API di OpenAI (GPT-4o-mini) per standardizzare au
 
 ### Funzioni Principali
 
-#### `standardizeWorkoutWithOpenAI(textContent)`
+#### `standardizeWorkoutWithGemini(textContent)`
 Converte qualsiasi formato di piano di allenamento nel formato JSON standardizzato dell'applicazione.
 
-#### `standardizeDietWithOpenAI(textContent)`
+#### `standardizeDietWithGemini(textContent)`
 Converte qualsiasi formato di piano dieta nel formato JSON standardizzato dell'applicazione.
 
 ### Integrazione nei Punti di Importazione
@@ -71,25 +71,25 @@ L'integrazione è stata implementata in tutte le seguenti funzionalità:
 
 #### index.html (Vista Utente)
 1. **Upload File Allenamento** (`uploadWorkoutFile`)
-   - Carica file e li processa con OpenAI
+   - Carica file e li processa con Gemini
    - Aggiunge automaticamente gli esercizi al piano
 
 2. **Importa Testo Allenamento** (`importWorkoutPlan`)
-   - Usa OpenAI per standardizzare il testo incollato
-   - Fallback su parser manuale se OpenAI non disponibile
+   - Usa Gemini per standardizzare il testo incollato
+   - Fallback su parser manuale se Gemini non disponibile
 
 3. **Upload File Dieta** (`uploadDietFile`)
-   - Carica file dieta e li processa con OpenAI
+   - Carica file dieta e li processa con Gemini
    - Aggiorna automaticamente il piano settimanale
 
 4. **Importa Testo Dieta** (`importDietPlan`)
-   - Usa OpenAI per standardizzare il piano dieta
-   - Fallback su parser manuale se OpenAI non disponibile
+   - Usa Gemini per standardizzare il piano dieta
+   - Fallback su parser manuale se Gemini non disponibile
 
 #### pro.html (Vista Professionista)
 1. **Upload File per Clienti** (`uploadFile`)
    - Supporta upload di file workout e diet per clienti
-   - Processa con OpenAI e salva automaticamente
+   - Processa con Gemini e salva automaticamente
 
 2. **Importa Testo Allenamento Cliente** (`importWorkoutPlan`)
    - Standardizza e salva piani per clienti specifici
@@ -103,35 +103,34 @@ Tutte le funzioni implementano un meccanismo di fallback robusto:
 
 ```javascript
 try {
-  // Tenta standardizzazione con OpenAI
-  const standardizedData = await standardizeWorkoutWithOpenAI(content);
+  // Tenta standardizzazione con Gemini
+  const standardizedData = await standardizeWorkoutWithGemini(content);
   // Usa i dati standardizzati
-} catch (openaiError) {
-  console.log('OpenAI standardization failed, falling back to manual parsing');
+} catch (geminiError) {
+  console.log('Gemini standardization failed, falling back to manual parsing');
   // Fallback su parser manuale originale
   // ... logica di parsing manuale ...
 }
 ```
 
 Questo garantisce che l'applicazione continui a funzionare anche se:
-- L'API OpenAI è temporaneamente non disponibile
+- L'API Gemini è temporaneamente non disponibile
 - Il token API è invalido o scaduto
 - Ci sono problemi di rete
-- Il formato del file non è supportato da OpenAI
+- Il formato del file non è supportato da Gemini
 
 ## Configurazione API
 
-La chiave API OpenAI è configurata nelle costanti:
+La chiave API Gemini è configurata nelle costanti:
 
 ```javascript
-const OPENAI_API_KEY = 'sk-svcacct-...';
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+const GEMINI_API_KEY = 'AIzaSyBWKDMj9eNMw4WwZ4E1Cso6PwqqcVsWKg8';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 ```
 
 ### Modello Utilizzato
-- **Modello**: `gpt-4o-mini`
-- **Temperature**: 0.3 (per output più deterministici)
-- **Prompt di Sistema**: Ottimizzati per ogni tipo di conversione
+- **Modello**: `gemini-2.0-flash`
+- **Prompt**: Ottimizzati per ogni tipo di conversione
 
 ## Vantaggi dell'Integrazione
 
@@ -150,14 +149,14 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 2. Cliccare su "INCOLLA TESTO / IMPORTA"
 3. Incollare il piano in qualsiasi formato (es. da Word, Excel, PDF copiato)
 4. Cliccare "IMPORTA PIANO"
-5. Il sistema userà OpenAI per standardizzare e importare automaticamente
+5. Il sistema userà Gemini per standardizzare e importare automaticamente
 
 ### Caricare un File Dieta
 
 1. Navigare alla sezione "DIETA"
 2. Cliccare su "Choose File" in "CARICA PIANO / FILE"
 3. Selezionare un file (PDF, DOC, CSV, TXT, etc.)
-4. Il sistema processerà il file con OpenAI e importerà il piano
+4. Il sistema processerà il file con Gemini e importerà il piano
 
 ## Note di Sicurezza
 
@@ -170,7 +169,7 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 ### Esempio di Implementazione Sicura (Raccomandato)
 
-Creare un file `openai_proxy.php`:
+Creare un file `gemini_proxy.php`:
 
 ```php
 <?php
@@ -183,14 +182,14 @@ if (!isset($_SESSION['user_id'])) {
     exit(json_encode(['error' => 'Non autenticato']));
 }
 
-$apiKey = getenv('OPENAI_API_KEY'); // Da variabile d'ambiente
+$apiKey = getenv('GEMINI_API_KEY'); // Da variabile d'ambiente
 $input = json_decode(file_get_contents('php://input'), true);
 
-// Forward request to OpenAI
+// Forward request to Gemini
 // ... implementazione proxy ...
 ```
 
-Quindi modificare le chiamate client per usare il proxy locale invece di chiamare direttamente OpenAI.
+Quindi modificare le chiamate client per usare il proxy locale invece di chiamare direttamente Gemini.
 
 ## Testing
 
@@ -209,7 +208,7 @@ Il sistema è stato testato con:
 3. Il sistema userà automaticamente il fallback manuale
 
 ### I dati non sono nel formato corretto
-1. OpenAI dovrebbe gestire la maggior parte dei formati
+1. Gemini dovrebbe gestire la maggior parte dei formati
 2. Se persiste, il parser manuale proverà a gestirlo
 3. Verificare che il formato di input contenga le informazioni necessarie
 
