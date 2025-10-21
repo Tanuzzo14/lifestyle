@@ -7,7 +7,7 @@
             "exercise": "Stacco - 3 serie x 6 ripetizioni - 100kg",
             "sets": 0,
             "reps": 0,
-            "load": "N/D"
+            "load": "N\/D"
         },
         {
             "id": 1760975909163.4482,
@@ -15,7 +15,7 @@
             "exercise": "Military press - 3 serie x 10 ripetizioni - 40kg",
             "sets": 0,
             "reps": 0,
-            "load": "N/D"
+            "load": "N\/D"
         },
         {
             "id": 1760975909163.0366,
@@ -23,7 +23,7 @@
             "exercise": "Rematore - 4 serie x 10 ripetizioni - 50kg",
             "sets": 0,
             "reps": 0,
-            "load": "N/D"
+            "load": "N\/D"
         },
         {
             "id": 1760974357950,
@@ -46,5 +46,30 @@
     "sleepStartTimestamp": null,
     "displayUsername": "TESTUSER",
     "userType": "user",
-    "updatedAt": "2025-10-20T16:18:19.109Z"
+    "updatedAt": "2025-10-20T16:18:19.109Z",
+    "3135132788": {
+        "data": {
+            "habits": [
+                {
+                    "id": 1761042228572,
+                    "description": "BERE 2L DI ACQUA",
+                    "completed": false
+                }
+            ],
+            "workout": [],
+            "uploadedWorkoutPlans": [],
+            "diet": [],
+            "dietPlan": {
+                "targetCalories": 2000,
+                "plan": []
+            },
+            "uploadedDietPlans": [],
+            "dailyCompliance": [],
+            "measurementsLog": []
+        },
+        "sleepStartTimestamp": null,
+        "displayUsername": "TESTUSER1",
+        "userType": "user",
+        "updatedAt": "2025-10-21T10:23:48.572Z"
+    }
 }
