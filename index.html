@@ -577,44 +577,67 @@ ${textContent}`;
         login: async function(username, password) {
           try {
             const userKey = username.toLowerCase();
-            const uid = simpleHash(userKey).toString();
+            const hashBasedUid = simpleHash(userKey).toString();
             
             let userData = null;
+            let actualUid = null;
             let fromLocalStorage = false;
             
-            // Try to get user data from data.json first
+            // Try to get user data from data.json first using hash-based UID
             try {
-              const result = await apiCall('GET', { userId: uid });
+              const result = await apiCall('GET', { userId: hashBasedUid });
               if (result.success && result.data) {
                 userData = result.data;
+                actualUid = hashBasedUid;
               }
             } catch (err) {
               console.error("Failed to read from data.json:", err);
             }
             
-            // If not found in data.json, try localStorage
+            // If not found by hash-based UID, search all users by username (for trainer-created users)
             if (!userData) {
-              userData = getFromLocalStorage(uid);
+              try {
+                const allDataResult = await apiCall('GET', {});
+                if (allDataResult.success && allDataResult.data) {
+                  const allData = allDataResult.data;
+                  // Search for user with matching displayUsername
+                  for (const [uid, data] of Object.entries(allData)) {
+                    if (data && data.displayUsername && data.displayUsername.toLowerCase() === userKey) {
+                      userData = data;
+                      actualUid = uid;
+                      break;
+                    }
+                  }
+                }
+              } catch (err) {
+                console.error("Failed to search all users:", err);
+              }
+            }
+            
+            // If still not found in data.json, try localStorage
+            if (!userData) {
+              userData = getFromLocalStorage(hashBasedUid);
               if (userData) {
+                actualUid = hashBasedUid;
                 fromLocalStorage = true;
                 console.log('User data loaded from localStorage fallback');
               }
             }
             
-            if (userData) {
+            if (userData && actualUid) {
               // Verify password (simple hash comparison)
               const storedPasswordHash = userData.passwordHash || '';
               const inputPasswordHash = simpleHash(password).toString();
               
               if (storedPasswordHash === inputPasswordHash) {
                 state.username = userKey.toUpperCase();
-                state.uid = uid;
+                state.uid = actualUid;
                 state.userType = userData.userType || 'user';
                 state.isAuthenticated = true;
                 
                 // Save to localStorage
                 localStorage.setItem('currentUser', JSON.stringify({
-                  uid: uid,
+                  uid: actualUid,
                   username: state.username,
                   userType: state.userType
                 }));
@@ -622,14 +645,14 @@ ${textContent}`;
                 // If data was from localStorage, try to sync it to data.json
                 if (fromLocalStorage) {
                   try {
-                    const syncResult = await apiCall('POST', { userId: uid, data: userData });
+                    const syncResult = await apiCall('POST', { userId: actualUid, data: userData });
                     if (syncResult.success) {
                       console.log('Successfully synced localStorage data to data.json');
                       // Remove from localStorage after successful sync
                       const localStorageUsers = localStorage.getItem('localStorageUsers');
                       if (localStorageUsers) {
                         const users = JSON.parse(localStorageUsers);
-                        delete users[uid];
+                        delete users[actualUid];
                         if (Object.keys(users).length === 0) {
                           localStorage.removeItem('localStorageUsers');
                         } else {
