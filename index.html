@@ -516,6 +516,11 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
             updatedAt: new Date().toISOString()
           };
           
+          // Preserve createdBy field if it exists
+          if (state.createdBy) {
+            payload.createdBy = state.createdBy;
+          }
+          
           let savedToDataJson = false;
           
           // Try to save to data.json
