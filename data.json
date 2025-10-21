@@ -1,1 +1,30 @@
-
+{
+    "-1145792675": {
+        "data": {
+            "habits": [],
+            "workout": [
+                {
+                    "id": 1760974357950,
+                    "day": "GIORNO A",
+                    "exercise": "PANCA PIANA",
+                    "sets": 3,
+                    "reps": 0,
+                    "load": "90"
+                }
+            ],
+            "uploadedWorkoutPlans": [],
+            "diet": [],
+            "dietPlan": {
+                "targetCalories": 2000,
+                "plan": []
+            },
+            "uploadedDietPlans": [],
+            "dailyCompliance": [],
+            "measurementsLog": []
+        },
+        "sleepStartTimestamp": null,
+        "displayUsername": "TESTUSER",
+        "userType": "user",
+        "updatedAt": "2025-10-20T16:18:19.109Z"
+    }
+}
