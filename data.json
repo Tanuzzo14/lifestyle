@@ -1,61 +1,17 @@
 {
-    "reps": 0,
-    "workouts": [
-        {
-            "id": 1760975909163.3665,
-            "day": "GIORNO 2",
-            "exercise": "Stacco - 3 serie x 6 ripetizioni - 100kg",
-            "sets": 0,
-            "reps": 0,
-            "load": "N\/D"
-        },
-        {
-            "id": 1760975909163.4482,
-            "day": "GIORNO 2",
-            "exercise": "Military press - 3 serie x 10 ripetizioni - 40kg",
-            "sets": 0,
-            "reps": 0,
-            "load": "N\/D"
-        },
-        {
-            "id": 1760975909163.0366,
-            "day": "GIORNO 2",
-            "exercise": "Rematore - 4 serie x 10 ripetizioni - 50kg",
-            "sets": 0,
-            "reps": 0,
-            "load": "N\/D"
-        },
-        {
-            "id": 1760974357950,
-            "day": "GIORNO A",
-            "exercise": "PANCA PIANA",
-            "sets": 3,
-            "reps": 0,
-            "load": "90"
-        }
-    ],
-    "uploadedWorkoutPlans": [],
-    "diet": [],
-    "dietPlan": {
-        "targetCalories": 2000,
-        "plan": []
-    },
-    "uploadedDietPlans": [],
-    "dailyCompliance": [],
-    "measurementsLog": [],
-    "sleepStartTimestamp": null,
-    "displayUsername": "TESTUSER",
-    "userType": "user",
-    "updatedAt": "2025-10-20T16:18:19.109Z",
-    "3135132788": {
+    "103666436": {
+        "userType": "pro",
+        "displayUsername": "MARIO",
+        "passwordHash": "103666436",
+        "uid": "103666436",
+        "clients": [
+            {
+                "uid": "client_1761051185673_6008",
+                "username": "TANO"
+            }
+        ],
         "data": {
-            "habits": [
-                {
-                    "id": 1761042228572,
-                    "description": "BERE 2L DI ACQUA",
-                    "completed": false
-                }
-            ],
+            "habits": [],
             "workout": [],
             "uploadedWorkoutPlans": [],
             "diet": [],
@@ -64,12 +20,49 @@
                 "plan": []
             },
             "uploadedDietPlans": [],
-            "dailyCompliance": [],
+            "dailyCompliance": {},
             "measurementsLog": []
         },
         "sleepStartTimestamp": null,
-        "displayUsername": "TESTUSER1",
+        "createdAt": "2025-10-21T12:49:04.691Z"
+    },
+    "client_1761051185673_6008": {
         "userType": "user",
-        "updatedAt": "2025-10-21T10:23:48.572Z"
+        "displayUsername": "TANO",
+        "passwordHash": "2753182340",
+        "uid": "client_1761051185673_6008",
+        "data": {
+            "habits": [],
+            "workout": [
+                {
+                    "id": 1761051409166.5063,
+                    "day": "LUNEDÌ",
+                    "exercise": "LEG PRESS (MACCHINA)",
+                    "sets": 3,
+                    "reps": 5,
+                    "load": "N/D"
+                },
+                {
+                    "id": 1761051409166.0129,
+                    "day": "LUNEDÌ",
+                    "exercise": "HIP THRUST (BILANCIERE O MACCH.)",
+                    "sets": 3,
+                    "reps": 5,
+                    "load": "N/D"
+                }
+            ],
+            "uploadedWorkoutPlans": [],
+            "diet": [],
+            "dietPlan": {
+                "targetCalories": 2000,
+                "plan": []
+            },
+            "uploadedDietPlans": [],
+            "dailyCompliance": {},
+            "measurementsLog": []
+        },
+        "sleepStartTimestamp": null,
+        "createdBy": "103666436",
+        "createdAt": "2025-10-21T12:53:05.673Z"
     }
 }
