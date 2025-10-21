@@ -33,6 +33,7 @@ Il sistema utilizza api.php e data.json per l'autenticazione:
 - Sessione utente salvata in localStorage del browser per accesso rapido
 - Tutti i dati utente persistono in data.json sul server
 - **Accesso multi-dispositivo**: i dati sono accessibili da qualsiasi dispositivo connesso al server
+- **BASE_USER automatico**: Gli utenti che si registrano autonomamente (non creati da un professionista) vengono automaticamente assegnati a un allenatore speciale chiamato BASE_USER per tracciamento centralizzato
 
 ### Modulo di Autenticazione (auth.js)
 
@@ -99,6 +100,7 @@ Il file data.json viene creato automaticamente al primo utilizzo.
 ### Per Utenti Normali
 - ✅ Registrazione e login con password salvata su server
 - ✅ Accesso multi-dispositivo tramite data.json
+- ✅ Assegnazione automatica a BASE_USER per tracciamento centralizzato
 - ✅ Monitoraggio abitudini giornaliere
 - ✅ Gestione piano di allenamento
 - ✅ Gestione piano dieta
@@ -161,13 +163,16 @@ Per testare l'implementazione:
 ## File del Progetto
 
 - **index.html** - Applicazione principale utente (usa api.php per data.json)
-- **auth.js** - Modulo di autenticazione separato (login, registrazione, logout)
+- **auth.js** - Modulo di autenticazione separato (login, registrazione, logout, BASE_USER)
 - **pro.html** - Dashboard professionista (usa api.php per data.json)
 - **api.php** - API PHP per gestione data.json (lettura/scrittura/eliminazione)
 - **data.json** - File di storage dati sul server (creato automaticamente)
 - **test_api.html** - Test API (per verificare funzionamento api.php)
 - **test_auth.html** - Test modulo autenticazione (per verificare auth.js)
 - **test_auth_module.js** - Script Node.js per test automatici del modulo auth
+- **test_base_user.html** - Test interattivi per feature BASE_USER
+- **test_base_user_creation.js** - Test automatici per creazione BASE_USER
+- **BASE_USER_FEATURE.md** - Documentazione completa feature BASE_USER
 
 ## Requisiti
 
