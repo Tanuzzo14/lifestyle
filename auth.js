@@ -174,7 +174,13 @@ export const Auth = {
         const storedPasswordHash = userData.passwordHash || '';
         const inputPasswordHash = simpleHash(password).toString();
         
-        if (storedPasswordHash === inputPasswordHash) {
+        // If no password hash exists, use username as default password
+        // This handles users created by trainers without explicit passwords
+        const defaultPasswordHash = simpleHash(userKey).toString();
+        const isPasswordValid = storedPasswordHash === inputPasswordHash || 
+                                (!storedPasswordHash && inputPasswordHash === defaultPasswordHash);
+        
+        if (isPasswordValid) {
           const user = {
             username: userKey.toUpperCase(),
             uid: actualUid,
