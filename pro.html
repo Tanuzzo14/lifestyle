@@ -247,8 +247,9 @@ const proApp = {
     try {
       const result = await apiCall('GET', { userId: this.user.uid });
       
-      if (!result.success || !result.data || result.data.userType !== "pro") {
+      if (!result.data.userType !== "pro") {
         this.showError("Accesso non autorizzato. Il tuo account non è un account professionista.");
+        this.showError(result.data.userType);
         localStorage.removeItem('currentUser');
         return;
       }
