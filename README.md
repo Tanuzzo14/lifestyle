@@ -34,6 +34,33 @@ Il sistema utilizza api.php e data.json per l'autenticazione:
 - Tutti i dati utente persistono in data.json sul server
 - **Accesso multi-dispositivo**: i dati sono accessibili da qualsiasi dispositivo connesso al server
 
+### Modulo di Autenticazione (auth.js)
+
+La logica di autenticazione è stata separata in un modulo dedicato (`auth.js`) che può essere riutilizzato:
+
+```javascript
+// Importa il modulo di autenticazione
+import { Auth } from './auth.js';
+
+// Login
+const user = await Auth.login(username, password, displayErrorCallback);
+
+// Registrazione
+const newUser = await Auth.register(username, password, userType, displayErrorCallback);
+
+// Verifica autenticazione
+const currentUser = await Auth.checkAuth();
+
+// Logout
+Auth.logout();
+```
+
+Questo approccio modulare:
+- ✅ Separa la logica di autenticazione dalla dashboard
+- ✅ Rende il codice più mantenibile
+- ✅ Permette di riutilizzare l'autenticazione in altre pagine
+- ✅ Facilita i test unitari
+
 ### Struttura Dati in data.json
 
 I dati vengono salvati nel file `data.json` sul server tramite api.php:
@@ -134,10 +161,13 @@ Per testare l'implementazione:
 ## File del Progetto
 
 - **index.html** - Applicazione principale utente (usa api.php per data.json)
+- **auth.js** - Modulo di autenticazione separato (login, registrazione, logout)
 - **pro.html** - Dashboard professionista (usa api.php per data.json)
 - **api.php** - API PHP per gestione data.json (lettura/scrittura/eliminazione)
 - **data.json** - File di storage dati sul server (creato automaticamente)
 - **test_api.html** - Test API (per verificare funzionamento api.php)
+- **test_auth.html** - Test modulo autenticazione (per verificare auth.js)
+- **test_auth_module.js** - Script Node.js per test automatici del modulo auth
 
 ## Requisiti
 

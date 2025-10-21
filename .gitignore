@@ -12,6 +12,9 @@ tmp/
 # Log
 *.log
 
+# Test files (optional - can be committed)
+# test_auth_module.js
+
 # OS
 .DS_Store
 Thumbs.db
