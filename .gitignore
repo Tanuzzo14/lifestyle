@@ -1,5 +1,7 @@
 # File di dati
 data.json
+data.json.backup
+*.backup
 
 # File temporanei
 *.tmp
