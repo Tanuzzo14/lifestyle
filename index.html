@@ -314,10 +314,41 @@ ${textContent}`;
             updatedAt: new Date().toISOString()
           };
           
-          const result = await apiCall('POST', { userId: state.uid, data: payload });
-          if (!result.success) {
-            console.error("Errore salvataggio:", result.error);
-            displayError("ERRORE SALVATAGGIO DATI");
+          let savedToDataJson = false;
+          
+          // Try to save to data.json
+          try {
+            const result = await apiCall('POST', { userId: state.uid, data: payload });
+            if (result.success) {
+              savedToDataJson = true;
+              
+              // If successfully saved to data.json, try to remove from localStorage backup
+              const localStorageUsers = localStorage.getItem('localStorageUsers');
+              if (localStorageUsers) {
+                const users = JSON.parse(localStorageUsers);
+                if (users[state.uid]) {
+                  delete users[state.uid];
+                  if (Object.keys(users).length === 0) {
+                    localStorage.removeItem('localStorageUsers');
+                  } else {
+                    localStorage.setItem('localStorageUsers', JSON.stringify(users));
+                  }
+                }
+              }
+            }
+          } catch (err) {
+            console.error("Failed to save to data.json:", err);
+          }
+          
+          // If data.json save failed, save to localStorage
+          if (!savedToDataJson) {
+            const savedToLocalStorage = saveToLocalStorage(state.uid, payload);
+            if (savedToLocalStorage) {
+              console.log('App state saved to localStorage (fallback)');
+            } else {
+              console.error("Failed to save to both data.json and localStorage");
+              displayError("ERRORE SALVATAGGIO DATI");
+            }
           }
         } catch (err) {
           console.error("Errore salvataggio:", err);
@@ -329,10 +360,29 @@ ${textContent}`;
       async function loadUserData() {
         if (!state.uid) return;
         try {
-          const result = await apiCall('GET', { userId: state.uid });
+          let obj = null;
+          let fromLocalStorage = false;
           
-          if (result.success && result.data) {
-            const obj = result.data;
+          // Try to load from data.json first
+          try {
+            const result = await apiCall('GET', { userId: state.uid });
+            if (result.success && result.data) {
+              obj = result.data;
+            }
+          } catch (err) {
+            console.error("Failed to load from data.json:", err);
+          }
+          
+          // If not found in data.json, try localStorage
+          if (!obj) {
+            obj = getFromLocalStorage(state.uid);
+            if (obj) {
+              fromLocalStorage = true;
+              console.log('User data loaded from localStorage fallback');
+            }
+          }
+          
+          if (obj) {
             // obj may contain .data (app data) and sleepStartTimestamp
             state.data = obj.data || {
                 habits: [],
@@ -358,6 +408,29 @@ ${textContent}`;
             if (!state.data.measurementsLog) state.data.measurementsLog = [];
             if (!state.data.uploadedWorkoutPlans) state.data.uploadedWorkoutPlans = [];
             if (!state.data.uploadedDietPlans) state.data.uploadedDietPlans = [];
+            
+            // If data was from localStorage, try to sync it to data.json
+            if (fromLocalStorage) {
+              try {
+                const syncResult = await apiCall('POST', { userId: state.uid, data: obj });
+                if (syncResult.success) {
+                  console.log('Successfully synced user data from localStorage to data.json');
+                  // Remove from localStorage after successful sync
+                  const localStorageUsers = localStorage.getItem('localStorageUsers');
+                  if (localStorageUsers) {
+                    const users = JSON.parse(localStorageUsers);
+                    delete users[state.uid];
+                    if (Object.keys(users).length === 0) {
+                      localStorage.removeItem('localStorageUsers');
+                    } else {
+                      localStorage.setItem('localStorageUsers', JSON.stringify(users));
+                    }
+                  }
+                }
+              } catch (syncErr) {
+                console.error('Failed to sync to data.json during load:', syncErr);
+              }
+            }
           } else {
             // initialize empty
             state.data = {
@@ -381,9 +454,85 @@ ${textContent}`;
         }
       }
 
+      // ---------- LOCALSTORAGE SYNC FUNCTIONS ----------
+      // Sync localStorage user data to data.json when possible
+      async function syncLocalStorageToDataJson() {
+        try {
+          const localStorageUsers = localStorage.getItem('localStorageUsers');
+          if (!localStorageUsers) {
+            return; // No pending data to sync
+          }
+
+          const users = JSON.parse(localStorageUsers);
+          let syncedCount = 0;
+          let failedCount = 0;
+
+          for (const [userId, userData] of Object.entries(users)) {
+            try {
+              const result = await apiCall('POST', { userId: userId, data: userData });
+              if (result.success) {
+                syncedCount++;
+                // Remove from localStorage after successful sync
+                delete users[userId];
+              } else {
+                failedCount++;
+              }
+            } catch (err) {
+              console.error(`Failed to sync user ${userId}:`, err);
+              failedCount++;
+            }
+          }
+
+          // Update localStorage with remaining unsync'd users
+          if (Object.keys(users).length === 0) {
+            localStorage.removeItem('localStorageUsers');
+          } else {
+            localStorage.setItem('localStorageUsers', JSON.stringify(users));
+          }
+
+          if (syncedCount > 0) {
+            console.log(`Synced ${syncedCount} users from localStorage to data.json`);
+          }
+        } catch (error) {
+          console.error('Error during localStorage sync:', error);
+        }
+      }
+
+      // Save user data to localStorage as fallback
+      function saveToLocalStorage(userId, userData) {
+        try {
+          const localStorageUsers = localStorage.getItem('localStorageUsers');
+          const users = localStorageUsers ? JSON.parse(localStorageUsers) : {};
+          users[userId] = userData;
+          localStorage.setItem('localStorageUsers', JSON.stringify(users));
+          return true;
+        } catch (error) {
+          console.error('Failed to save to localStorage:', error);
+          return false;
+        }
+      }
+
+      // Get user data from localStorage
+      function getFromLocalStorage(userId) {
+        try {
+          const localStorageUsers = localStorage.getItem('localStorageUsers');
+          if (!localStorageUsers) {
+            return null;
+          }
+          const users = JSON.parse(localStorageUsers);
+          return users[userId] || null;
+        } catch (error) {
+          console.error('Failed to read from localStorage:', error);
+          return null;
+        }
+      }
+
       // ---------- AUTH STATE LISTENER (MODIFICATO) ----------
       // Check localStorage for existing session
       async function checkAuth() {
+        // Always try to sync localStorage data to data.json on app start
+        await syncLocalStorageToDataJson();
+
         const savedUser = localStorage.getItem('currentUser');
         if (savedUser) {
           const user = JSON.parse(savedUser);
@@ -430,18 +579,37 @@ ${textContent}`;
             const userKey = username.toLowerCase();
             const uid = simpleHash(userKey).toString();
             
-            // Check if user exists
-            const result = await apiCall('GET', { userId: uid });
+            let userData = null;
+            let fromLocalStorage = false;
             
-            if (result.success && result.data) {
+            // Try to get user data from data.json first
+            try {
+              const result = await apiCall('GET', { userId: uid });
+              if (result.success && result.data) {
+                userData = result.data;
+              }
+            } catch (err) {
+              console.error("Failed to read from data.json:", err);
+            }
+            
+            // If not found in data.json, try localStorage
+            if (!userData) {
+              userData = getFromLocalStorage(uid);
+              if (userData) {
+                fromLocalStorage = true;
+                console.log('User data loaded from localStorage fallback');
+              }
+            }
+            
+            if (userData) {
               // Verify password (simple hash comparison)
-              const storedPasswordHash = result.data.passwordHash || '';
+              const storedPasswordHash = userData.passwordHash || '';
               const inputPasswordHash = simpleHash(password).toString();
               
               if (storedPasswordHash === inputPasswordHash) {
                 state.username = userKey.toUpperCase();
                 state.uid = uid;
-                state.userType = result.data.userType || 'user';
+                state.userType = userData.userType || 'user';
                 state.isAuthenticated = true;
                 
                 // Save to localStorage
@@ -450,6 +618,29 @@ ${textContent}`;
                   username: state.username,
                   userType: state.userType
                 }));
+                
+                // If data was from localStorage, try to sync it to data.json
+                if (fromLocalStorage) {
+                  try {
+                    const syncResult = await apiCall('POST', { userId: uid, data: userData });
+                    if (syncResult.success) {
+                      console.log('Successfully synced localStorage data to data.json');
+                      // Remove from localStorage after successful sync
+                      const localStorageUsers = localStorage.getItem('localStorageUsers');
+                      if (localStorageUsers) {
+                        const users = JSON.parse(localStorageUsers);
+                        delete users[uid];
+                        if (Object.keys(users).length === 0) {
+                          localStorage.removeItem('localStorageUsers');
+                        } else {
+                          localStorage.setItem('localStorageUsers', JSON.stringify(users));
+                        }
+                      }
+                    }
+                  } catch (syncErr) {
+                    console.error('Failed to sync to data.json during login:', syncErr);
+                  }
+                }
                 
                 await loadUserData();
                 
@@ -479,9 +670,22 @@ ${textContent}`;
             const uid = simpleHash(userKey).toString();
             const passwordHash = simpleHash(password).toString();
 
-            // Check if user already exists
-            const existingUser = await apiCall('GET', { userId: uid });
-            if (existingUser.success && existingUser.data) {
+            // Check if user already exists in data.json or localStorage
+            let existingUser = null;
+            try {
+              const result = await apiCall('GET', { userId: uid });
+              if (result.success && result.data) {
+                existingUser = result.data;
+              }
+            } catch (err) {
+              console.error("Failed to check data.json:", err);
+            }
+            
+            if (!existingUser) {
+              existingUser = getFromLocalStorage(uid);
+            }
+            
+            if (existingUser) {
               displayError('NOME UTENTE GIÀ IN USO. SCEGLI UN ALTRO NOME.');
               return;
             }
@@ -502,28 +706,49 @@ ${textContent}`;
               createdAt: new Date().toISOString()
             };
             
-            const result = await apiCall('POST', { userId: uid, data: payload });
+            let savedToDataJson = false;
             
-            if (result.success) {
-              // Save to localStorage
-              localStorage.setItem('currentUser', JSON.stringify({
-                uid: uid,
-                username: state.username,
-                userType: userType
-              }));
-              
-              if (userType === "pro") {
-                redirectToProDashboard();
+            // Try to save to data.json first
+            try {
+              const result = await apiCall('POST', { userId: uid, data: payload });
+              if (result.success) {
+                savedToDataJson = true;
+                console.log('User registered successfully to data.json');
+              }
+            } catch (err) {
+              console.error("Failed to save to data.json:", err);
+            }
+            
+            // If data.json save failed, save to localStorage
+            if (!savedToDataJson) {
+              const savedToLocalStorage = saveToLocalStorage(uid, payload);
+              if (savedToLocalStorage) {
+                console.log('User registered to localStorage (fallback)');
+                displayError('REGISTRAZIONE SALVATA LOCALMENTE. SARÀ SINCRONIZZATA QUANDO POSSIBILE.');
+              } else {
+                displayError('ERRORE DURANTE LA REGISTRAZIONE.');
                 return;
               }
+            }
+            
+            // Save to localStorage for session
+            localStorage.setItem('currentUser', JSON.stringify({
+              uid: uid,
+              username: state.username,
+              userType: userType
+            }));
+            
+            if (userType === "pro") {
+              redirectToProDashboard();
+              return;
+            }
 
-              // per utenti normali
-              state.view = 'wizard';
-              state.wizardStep = 1;
-              render();
+            // per utenti normali
+            state.view = 'wizard';
+            state.wizardStep = 1;
+            render();
+            if (savedToDataJson) {
               displayError('REGISTRAZIONE RIUSCITA! INIZIA LA CONFIGURAZIONE.');
-            } else {
-              displayError('ERRORE DURANTE LA REGISTRAZIONE.');
             }
           } catch (err) {
             console.error("Register error:", err);
