@@ -86,6 +86,7 @@
     <div id="error-overlay"></div>
     <div id="app" class="container mx-auto"></div>
 
+    <script src="config.js"></script>
     <script type="module">
       // ---------- Import Authentication Module ----------
       import { Auth } from './auth.js';
@@ -120,10 +121,6 @@
           return { success: false, error: error.message };
         }
       }
-
-      // ---------- Gemini Integration for File Format Standardization ----------
-      const GEMINI_API_KEY = 'AIzaSyCCE_m_W_L2DpBwA3hjaqMrOj-W1ws3Kv4';
-      const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
       async function standardizeWorkoutWithGemini(textContent) {
         try {
