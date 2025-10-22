@@ -1,22 +1,21 @@
-# Deny direct access to all files in back-end directory
-# Only allow access via application includes/imports
-
-# Block direct access to PHP files
-<FilesMatch "\.(php)$">
-    Order Allow,Deny
-    Deny from all
-</FilesMatch>
-
-# Block direct access to JS files
-<FilesMatch "\.(js)$">
-    Order Allow,Deny
-    Deny from all
-</FilesMatch>
-
-# Block directory listing
+# Protect back-end directory from direct browsing
+# Disable directory listing
 Options -Indexes
 
-# Alternative: Deny all access
-# Uncomment the following lines to deny all access
-# Order Deny,Allow
-# Deny from all
+# Prevent viewing of sensitive files
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Optional: Add headers for security
+<IfModule mod_headers.c>
+    # Prevent caching of sensitive data
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</IfModule>
+
+# Note: This .htaccess prevents directory listing but allows file access
+# The files can still be accessed by the application when imported/called
+# For stronger protection, consider moving truly sensitive files outside web root
