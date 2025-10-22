@@ -1,3 +1,0 @@
-<FilesMatch "^(auth\.json|php\.api|data\.json)$">
-    Require all denied
-</FilesMatch>
