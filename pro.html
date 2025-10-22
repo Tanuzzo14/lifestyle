@@ -541,8 +541,8 @@ const proApp = {
                     <div class="flex justify-between items-center">
                         <span class="font-semibold">${w.exercise?.toUpperCase() || 'N/D'}</span>
                         <div class="flex space-x-2">
-                            <button onclick="alert('Funzione di modifica esercizio non implementata. Usa Avanzate (JSON).')" class="text-blue-500 hover:text-blue-700 transition">Modifica</button>
-                            <button onclick="alert('Funzione di rimozione esercizio non implementata. Usa Avanzate (JSON).')" class="text-red-500 hover:text-red-700 transition">Rimuovi</button>
+                            <button onclick="proApp.editClientWorkout('${uid}', ${w.id})" class="text-blue-500 hover:text-blue-700 transition">Modifica</button>
+                            <button onclick="proApp.removeClientWorkout('${uid}', ${w.id})" class="text-red-500 hover:text-red-700 transition">Rimuovi</button>
                         </div>
                     </div>
                     <p class="text-xs text-gray-600">GIORNO: ${w.day} | SERIE: ${w.sets} | REP: ${w.reps} | CARICO: ${w.load}</p>
@@ -594,13 +594,13 @@ const proApp = {
 
         const dayLabels = ['LUNEDÌ','MARTEDÌ','MERCOLEDÌ','GIOVEDÌ','VENERDÌ','SABATO','DOMENICA'];
         const dietPlanHTML = (clientState.dietPlan?.plan || []).sort((a, b) => dayLabels.indexOf(a.day) - dayLabels.indexOf(b.day)).map((dayPlan) => {
-            const mealsHTML = dayPlan.meals.map((meal) => {
+            const mealsHTML = dayPlan.meals.map((meal, mealIndex) => {
                 return `<li class="py-2 border-b last:border-b-0 text-sm">
                     <div class="flex justify-between items-center">
                         <span class="font-semibold">${meal.category}: ${meal.description}</span>
                         <div class="flex space-x-2">
-                            <button onclick="alert('Funzione di modifica pasto non implementata. Usa Avanzate (JSON).')" class="text-blue-500 hover:text-blue-700 transition">Modifica</button>
-                            <button onclick="alert('Funzione di rimozione pasto non implementata. Usa Avanzate (JSON).')" class="text-red-500 hover:text-red-700 transition">Rimuovi</button>
+                            <button onclick="proApp.editClientDietMeal('${uid}', '${dayPlan.day}', ${mealIndex})" class="text-blue-500 hover:text-blue-700 transition">Modifica</button>
+                            <button onclick="proApp.removeClientDietMeal('${uid}', '${dayPlan.day}', ${mealIndex})" class="text-red-500 hover:text-red-700 transition">Rimuovi</button>
                         </div>
                     </div>
                     <p class="text-xs text-gray-600">${meal.weight} (${meal.type}) | ${meal.calories} KCAL</p>
@@ -780,6 +780,82 @@ const proApp = {
 
   // ------------- NUOVE FUNZIONI CRUD PER IL PROFESSIONISTA -------------
   
+  // Modifica esercizio esistente
+  async editClientWorkout(uid, exerciseId) {
+      if (!uid) return;
+      
+      const clientData = this.clientsData[uid];
+      if (!clientData || clientData.userType !== 'user') return alert("Cliente non valido.");
+      
+      const workout = clientData.data.workout || [];
+      const exerciseIndex = workout.findIndex(w => w.id === exerciseId);
+      
+      if (exerciseIndex === -1) return alert("Esercizio non trovato.");
+      
+      const exercise = workout[exerciseIndex];
+      
+      // Chiedi all'utente i nuovi valori
+      const newDay = prompt("Giorno (attuale: " + exercise.day + "):", exercise.day);
+      if (newDay === null) return; // Annullato
+      
+      const newExercise = prompt("Nome esercizio (attuale: " + exercise.exercise + "):", exercise.exercise);
+      if (newExercise === null) return; // Annullato
+      
+      const newSets = prompt("Serie (attuale: " + exercise.sets + "):", exercise.sets);
+      if (newSets === null) return; // Annullato
+      
+      const newReps = prompt("Ripetizioni (attuale: " + exercise.reps + "):", exercise.reps);
+      if (newReps === null) return; // Annullato
+      
+      const newLoad = prompt("Carico (attuale: " + exercise.load + "):", exercise.load);
+      if (newLoad === null) return; // Annullato
+      
+      try {
+          // Aggiorna l'esercizio
+          workout[exerciseIndex] = {
+              ...exercise,
+              day: String(newDay).toUpperCase(),
+              exercise: newExercise,
+              sets: parseInt(newSets) || 0,
+              reps: parseInt(newReps) || 0,
+              load: newLoad
+          };
+          
+          clientData.data.workout = workout;
+          await apiCall('POST', { userId: uid, data: clientData });
+          
+          this.clientsData[uid].data.workout = workout;
+          this.openEditClientModal(uid, 'workout');
+          alert("Esercizio modificato con successo!");
+      } catch (err) {
+          console.error("Errore editClientWorkout:", err);
+          alert("Errore durante la modifica dell'esercizio: " + (err?.message || err));
+      }
+  },
+  
+  // Rimuovi esercizio esistente
+  async removeClientWorkout(uid, exerciseId) {
+      if (!confirm("Sei sicuro di voler rimuovere questo esercizio?")) return;
+      if (!uid) return;
+      
+      const clientData = this.clientsData[uid];
+      if (!clientData || clientData.userType !== 'user') return alert("Cliente non valido.");
+      
+      const newWorkout = (clientData.data.workout || []).filter(w => w.id !== exerciseId);
+      
+      try {
+          clientData.data.workout = newWorkout;
+          await apiCall('POST', { userId: uid, data: clientData });
+          
+          this.clientsData[uid].data.workout = newWorkout;
+          this.openEditClientModal(uid, 'workout');
+          alert("Esercizio rimosso con successo!");
+      } catch (err) {
+          console.error("Errore removeClientWorkout:", err);
+          alert("Errore durante la rimozione dell'esercizio: " + (err?.message || err));
+      }
+  },
+  
   // Esempio: Aggiunta di un Esercizio al Cliente
   async addClientWorkout(uid, day, exercise, sets, reps, load) {
       if (!uid) return;
@@ -811,6 +887,93 @@ const proApp = {
       }
   },
 
+  // Modifica pasto esistente
+  async editClientDietMeal(uid, dayName, mealIndex) {
+      if (!uid) return;
+      
+      const clientData = this.clientsData[uid];
+      if (!clientData || clientData.userType !== 'user') return alert("Cliente non valido.");
+      
+      const dietPlan = clientData.data.dietPlan?.plan || [];
+      const dayPlan = dietPlan.find(p => p.day === dayName);
+      
+      if (!dayPlan || !dayPlan.meals[mealIndex]) return alert("Pasto non trovato.");
+      
+      const meal = dayPlan.meals[mealIndex];
+      
+      // Chiedi all'utente i nuovi valori
+      const newCategory = prompt("Categoria (attuale: " + meal.category + "):", meal.category);
+      if (newCategory === null) return; // Annullato
+      
+      const newDescription = prompt("Descrizione (attuale: " + meal.description + "):", meal.description);
+      if (newDescription === null) return; // Annullato
+      
+      const newWeight = prompt("Grammatura (attuale: " + meal.weight + "):", meal.weight);
+      if (newWeight === null) return; // Annullato
+      
+      const newType = prompt("Tipo (attuale: " + meal.type + "):", meal.type);
+      if (newType === null) return; // Annullato
+      
+      const newCalories = prompt("Calorie (attuale: " + meal.calories + "):", meal.calories);
+      if (newCalories === null) return; // Annullato
+      
+      try {
+          // Aggiorna il pasto
+          dayPlan.meals[mealIndex] = {
+              category: newCategory,
+              description: newDescription,
+              weight: newWeight,
+              type: newType,
+              calories: parseInt(newCalories) || 0
+          };
+          
+          clientData.data.dietPlan.plan = dietPlan;
+          await apiCall('POST', { userId: uid, data: clientData });
+          
+          this.clientsData[uid].data.dietPlan.plan = dietPlan;
+          this.openEditClientModal(uid, 'diet');
+          alert("Pasto modificato con successo!");
+      } catch (err) {
+          console.error("Errore editClientDietMeal:", err);
+          alert("Errore durante la modifica del pasto: " + (err?.message || err));
+      }
+  },
+  
+  // Rimuovi pasto esistente
+  async removeClientDietMeal(uid, dayName, mealIndex) {
+      if (!confirm("Sei sicuro di voler rimuovere questo pasto?")) return;
+      if (!uid) return;
+      
+      const clientData = this.clientsData[uid];
+      if (!clientData || clientData.userType !== 'user') return alert("Cliente non valido.");
+      
+      const dietPlan = clientData.data.dietPlan?.plan || [];
+      const dayPlan = dietPlan.find(p => p.day === dayName);
+      
+      if (!dayPlan) return alert("Giorno non trovato.");
+      
+      try {
+          // Rimuovi il pasto
+          dayPlan.meals.splice(mealIndex, 1);
+          
+          // Se il giorno non ha più pasti, rimuovi il giorno
+          if (dayPlan.meals.length === 0) {
+              const dayIndex = dietPlan.findIndex(p => p.day === dayName);
+              dietPlan.splice(dayIndex, 1);
+          }
+          
+          clientData.data.dietPlan.plan = dietPlan;
+          await apiCall('POST', { userId: uid, data: clientData });
+          
+          this.clientsData[uid].data.dietPlan.plan = dietPlan;
+          this.openEditClientModal(uid, 'diet');
+          alert("Pasto rimosso con successo!");
+      } catch (err) {
+          console.error("Errore removeClientDietMeal:", err);
+          alert("Errore durante la rimozione del pasto: " + (err?.message || err));
+      }
+  },
+  
   async addClientDietMeal(uid, day, category, description, weight, type, calories) {
       if (!uid) return;
 
