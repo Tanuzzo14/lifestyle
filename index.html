@@ -339,6 +339,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo con almeno 15
           
           // Add all exercises to the workout
           state.data.workout = workoutPlan;
+          state.data.workoutUpdatedAt = new Date().toISOString();
           await saveAppState();
           render();
           displayError(`PIANO DI ALLENAMENTO CREATO CON SUCCESSO! ${workoutPlan.length} ESERCIZI AGGIUNTI.`);
@@ -433,6 +434,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
           
           // Set the diet plan
           state.data.dietPlan.plan = dietPlan;
+          state.data.dietPlan.updatedAt = new Date().toISOString();
           await saveAppState();
           render();
           displayError(`PIANO NUTRIZIONALE CREATO CON SUCCESSO! ${dietPlan.length} GIORNI AGGIUNTI.`);
@@ -841,7 +843,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
           saveAppState();
           render();
         },
-        removeWorkout: function(id) { state.data.workout = state.data.workout.filter(w => w.id !== id); saveAppState(); render(); },
+        removeWorkout: function(id) { state.data.workout = state.data.workout.filter(w => w.id !== id); state.data.workoutUpdatedAt = new Date().toISOString(); saveAppState(); render(); },
 
         uploadWorkoutFile: async function(event) {
           const file = event.target.files[0];
@@ -885,6 +887,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
                     load: item.load ? item.load.toString().toUpperCase() : 'N/D'
                   });
                 });
+                state.data.workoutUpdatedAt = new Date().toISOString();
               }
               
               saveAppState();
@@ -996,6 +999,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
             
             if (newWorkoutData.length === 0) throw new Error('Nessun dato valido trovato nel testo.');
             state.data.workout = newWorkoutData;
+            state.data.workoutUpdatedAt = new Date().toISOString();
             saveAppState();
             state.view = 'workout';
             render();
@@ -1020,7 +1024,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
             render();
           } else displayError('ERRORE: ESERCIZIO NON TROVATO.');
         },
-        clearWorkoutPlan: function() { state.data.workout = []; saveAppState(); render(); displayError('PIANO DI ALLENAMENTO CANCELLATO.'); },
+        clearWorkoutPlan: function() { state.data.workout = []; state.data.workoutUpdatedAt = new Date().toISOString(); saveAppState(); render(); displayError('PIANO DI ALLENAMENTO CANCELLATO.'); },
 
         startQuickEditWeight: function(id) { state.quickEditingWeightId = id; render(); },
         cancelQuickEditWeight: function() { state.quickEditingWeightId = null; render(); },
@@ -1084,6 +1088,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
             
             if (newPlanGrouped.length === 0) throw new Error('NESSUN DATO VALIDO TROVATO. FORMATO ATTESO: GIORNO, TIPOLOGIA, DESCRIZIONE, GRAMMATURA, ALTRO, KCAL.');
             state.data.dietPlan.plan = newPlanGrouped;
+            state.data.dietPlan.updatedAt = new Date().toISOString();
             saveAppState();
             state.view = 'diet';
             render();
@@ -1110,6 +1115,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
           };
           if (dayPlan) dayPlan.meals.push(newMeal);
           else state.data.dietPlan.plan.push({ day: day.toUpperCase(), meals: [newMeal] });
+          state.data.dietPlan.updatedAt = new Date().toISOString();
           saveAppState();
           render();
         },
@@ -1119,6 +1125,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
           if (day) {
             day.meals.splice(mealIndex, 1);
             if (day.meals.length === 0) state.data.dietPlan.plan.splice(dayIndex, 1);
+            state.data.dietPlan.updatedAt = new Date().toISOString();
             saveAppState();
             render();
           }
@@ -1143,7 +1150,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
           } else displayError('ERRORE: PASTO NON TROVATO.');
         },
 
-        clearDietPlan: function() { state.data.dietPlan.plan = []; saveAppState(); render(); displayError('PIANO DIETA CANCELLATO.'); },
+        clearDietPlan: function() { state.data.dietPlan.plan = []; state.data.dietPlan.updatedAt = new Date().toISOString(); saveAppState(); render(); displayError('PIANO DIETA CANCELLATO.'); },
 
         uploadDietFile: async function(event) {
           const file = event.target.files[0];
@@ -1178,6 +1185,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
               // Add the standardized data to the diet plan
               if (standardizedData && Array.isArray(standardizedData) && standardizedData.length > 0) {
                 state.data.dietPlan.plan = standardizedData;
+                state.data.dietPlan.updatedAt = new Date().toISOString();
               }
               
               saveAppState();
@@ -1260,7 +1268,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
           }
           const metrics = calculateBodyMetrics(parsedValues.weight, parsedValues.height, parsedValues.age, parsedValues.gender);
           const whrMetrics = calculateWHR(parsedValues.waist, parsedValues.hips, parsedValues.gender);
-          const newMeasurement = { id: Date.now(), date: getTodayDateString(), raw: parsedValues, calculated: { ...metrics, ...whrMetrics } };
+          const newMeasurement = { id: Date.now(), date: getTodayDateString(), updatedAt: new Date().toISOString(), raw: parsedValues, calculated: { ...metrics, ...whrMetrics } };
           state.data.measurementsLog.push(newMeasurement);
           saveAppState();
           displayError('NUOVA MISURAZIONE SALVATA!');
