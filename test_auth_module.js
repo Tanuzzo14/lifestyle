@@ -8,7 +8,7 @@ console.log('Test 1: Checking auth.js file exists...');
 const fs = require('fs');
 const path = require('path');
 
-const authPath = path.join(__dirname, 'back-end', 'auth.js');
+const authPath = path.join(__dirname, 'auth.js');
 if (fs.existsSync(authPath)) {
     console.log('✓ auth.js file exists\n');
 } else {
@@ -52,7 +52,7 @@ console.log('Test 4: Checking index.html imports auth.js...');
 const indexPath = path.join(__dirname, 'index.html');
 const indexContent = fs.readFileSync(indexPath, 'utf8');
 
-if (indexContent.includes("import { Auth } from './back-end/auth.js'")) {
+if (indexContent.includes("import { Auth } from './auth.js'")) {
     console.log('✓ index.html imports Auth module\n');
 } else {
     console.log('✗ index.html does not import Auth module\n');

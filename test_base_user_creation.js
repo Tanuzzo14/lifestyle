@@ -1,5 +1,5 @@
 // Test script for BASE_USER functionality
-const API_URL = 'http://localhost:8000/back-end/api.php';
+const API_URL = 'http://localhost:8000/api.php';
 
 async function apiCall(method, params = {}) {
   try {

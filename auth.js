@@ -2,7 +2,7 @@
 // This module handles login, registration, and authentication logic
 
 // API Configuration
-const API_URL = 'back-end/api.php';
+const API_URL = 'api.php';
 
 // API call to server using data.json
 async function apiCall(method, params = {}) {
