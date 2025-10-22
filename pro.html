@@ -290,7 +290,31 @@ const proApp = {
     if (Array.isArray(arr) && arr.length === 0) return '—';
     if (Array.isArray(arr)) {
       const last = arr[arr.length - 1];
-      return last?.date || last?.day || 'N/D';
+      return last?.updatedAt ? new Date(last.updatedAt).toLocaleDateString('it-IT') : (last?.date || last?.day || 'N/D');
+    }
+    return '—';
+  },
+
+  getWorkoutLastDate(clientData) {
+    if (!clientData) return '—';
+    if (clientData.workoutUpdatedAt) {
+      return new Date(clientData.workoutUpdatedAt).toLocaleDateString('it-IT');
+    }
+    // Fallback to old behavior if no updatedAt field
+    if (Array.isArray(clientData.workout) && clientData.workout.length > 0) {
+      return 'N/D';
+    }
+    return '—';
+  },
+
+  getDietLastDate(clientData) {
+    if (!clientData?.dietPlan) return '—';
+    if (clientData.dietPlan.updatedAt) {
+      return new Date(clientData.dietPlan.updatedAt).toLocaleDateString('it-IT');
+    }
+    // Fallback to old behavior if no updatedAt field
+    if (Array.isArray(clientData.dietPlan.plan) && clientData.dietPlan.plan.length > 0) {
+      return 'N/D';
     }
     return '—';
   },
@@ -352,8 +376,8 @@ const proApp = {
               <p class="text-sm text-gray-500">ID Utente: ${c.uid}</p>
               <ul class="text-xs text-gray-600 mt-1">
                 <li>Ultima Misurazione: ${this.getLastDate(cd?.data?.measurementsLog)}</li>
-                <li>Ultimo Allenamento: ${this.getLastDate(cd?.data?.workout)}</li>
-                <li>Ultima Dieta: ${this.getLastDate(cd?.data?.dietPlan?.plan)}</li>
+                <li>Ultimo Allenamento: ${this.getWorkoutLastDate(cd?.data)}</li>
+                <li>Ultima Dieta: ${this.getDietLastDate(cd?.data)}</li>
               </ul>
             </div>
             <div class="flex flex-wrap gap-2 mt-3 md:mt-0 md:ml-4">
