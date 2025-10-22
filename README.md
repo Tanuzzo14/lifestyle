@@ -4,13 +4,37 @@
 
 Questo progetto utilizza **data.json** (tramite api.php) per salvare tutti i dati dell'applicazione su server, permettendo l'accesso multi-dispositivo. I dati vengono memorizzati nel file data.json sul server e sincronizzati tra diversi dispositivi.
 
+## Configurazione
+
+### Setup Chiavi API
+
+Il progetto utilizza chiavi API (es. Gemini API) che sono centralizzate in un file di configurazione separato per motivi di sicurezza.
+
+**Prima di utilizzare l'applicazione**:
+
+1. Copia il file template di configurazione:
+   ```bash
+   cp config.example.js config.js
+   ```
+
+2. Modifica `config.js` inserendo le tue chiavi API:
+   ```javascript
+   export const CONFIG = {
+     GEMINI_API_KEY: 'LA_TUA_CHIAVE_API_QUI',
+     GEMINI_API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+   };
+   ```
+
+3. **Importante**: Il file `config.js` è escluso dal controllo di versione (`.gitignore`) per proteggere le chiavi sensibili.
+
 ## Deployment
 
 ### Hosting con PHP
 L'applicazione richiede un server PHP per la persistenza dei dati:
 1. Caricare tutti i file su un server con supporto PHP
-2. Assicurarsi che il file data.json sia scrivibile dal server (permessi 666 o 777)
-3. L'applicazione sarà accessibile all'URL del server
+2. Creare il file `config.js` con le proprie chiavi API (vedi sezione Configurazione)
+3. Assicurarsi che il file data.json sia scrivibile dal server (permessi 666 o 777)
+4. L'applicazione sarà accessibile all'URL del server
 
 ### Hosting Locale (per test)
 Per testare in locale con PHP:
@@ -131,14 +155,15 @@ Il file data.json viene creato automaticamente al primo utilizzo.
 ## Testing
 
 Per testare l'implementazione:
-1. Avviare un server PHP locale: `php -S localhost:8000`
-2. Aprire `http://localhost:8000/index.html` in un browser
-3. Registrare un nuovo utente (tipo "Utente" o "Professionista della salute")
-4. I dati vengono salvati automaticamente in data.json sul server
-5. Effettuare logout e login per verificare la persistenza
-6. Aprire l'applicazione in un altro browser/tab e login con lo stesso utente
-7. Verificare che i dati siano sincronizzati tra i dispositivi
-8. Controllare il file data.json per vedere i dati salvati (include passwordHash)
+1. Creare il file `config.js` con le proprie chiavi API (vedere sezione Configurazione)
+2. Avviare un server PHP locale: `php -S localhost:8000`
+3. Aprire `http://localhost:8000/index.html` in un browser
+4. Registrare un nuovo utente (tipo "Utente" o "Professionista della salute")
+5. I dati vengono salvati automaticamente in data.json sul server
+6. Effettuare logout e login per verificare la persistenza
+7. Aprire l'applicazione in un altro browser/tab e login con lo stesso utente
+8. Verificare che i dati siano sincronizzati tra i dispositivi
+9. Controllare il file data.json per vedere i dati salvati (include passwordHash)
 
 ## Troubleshooting
 
@@ -166,12 +191,15 @@ Per testare l'implementazione:
 - **auth.js** - Modulo di autenticazione separato (login, registrazione, logout, BASE_USER)
 - **pro.html** - Dashboard professionista (usa api.php per data.json)
 - **api.php** - API PHP per gestione data.json (lettura/scrittura/eliminazione)
+- **config.js** - File di configurazione con chiavi API (NON incluso nel repository, creare da config.example.js)
+- **config.example.js** - Template per il file di configurazione
 - **data.json** - File di storage dati sul server (creato automaticamente)
 - **test_api.html** - Test API (per verificare funzionamento api.php)
 - **test_auth.html** - Test modulo autenticazione (per verificare auth.js)
 - **test_auth_module.js** - Script Node.js per test automatici del modulo auth
 - **test_base_user.html** - Test interattivi per feature BASE_USER
 - **test_base_user_creation.js** - Test automatici per creazione BASE_USER
+- **test_gemini_api.html** - Test integrazione Gemini API
 - **BASE_USER_FEATURE.md** - Documentazione completa feature BASE_USER
 
 ## Requisiti

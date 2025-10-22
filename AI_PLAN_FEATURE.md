@@ -91,10 +91,17 @@ If measurements are incomplete, the system shows an error: "DEVI COMPILARE TUTTE
 
 ### API Configuration
 
+API keys are now centralized in `config.js`:
+
 ```javascript
-const GEMINI_API_KEY = 'AIzaSyCCE_m_W_L2DpBwA3hjaqMrOj-W1ws3Kv4';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+// Import configuration
+import { CONFIG } from './config.js';
+
+const GEMINI_API_KEY = CONFIG.GEMINI_API_KEY;
+const GEMINI_API_URL = CONFIG.GEMINI_API_URL;
 ```
+
+**Note**: The `config.js` file is not committed to version control. Use `config.example.js` as a template to create your own `config.js` file with your API keys.
 
 ### Prompt Structure
 
