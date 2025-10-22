@@ -88,16 +88,16 @@
 
     <script type="module">
       // ---------- Import Authentication Module ----------
-      import { Auth } from './auth.js';
+      import { Auth } from './back-end/auth.js';
       
       // ---------- Import Configuration ----------
-      import { CONFIG } from './config.js';
+      import { CONFIG } from './back-end/config.js';
       
       // ---------- API Persistence with data.json ----------
       // Uses PHP API (api.php) for server-side storage with data.json
       // Allows multi-device access and data synchronization
       
-      const API_URL = 'api.php';
+      const API_URL = 'back-end/api.php';
       
       // API call to server using data.json
       async function apiCall(method, params = {}) {

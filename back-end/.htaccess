@@ -1,0 +1,22 @@
+# Deny direct access to all files in back-end directory
+# Only allow access via application includes/imports
+
+# Block direct access to PHP files
+<FilesMatch "\.(php)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Block direct access to JS files
+<FilesMatch "\.(js)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Block directory listing
+Options -Indexes
+
+# Alternative: Deny all access
+# Uncomment the following lines to deny all access
+# Order Deny,Allow
+# Deny from all

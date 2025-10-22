@@ -13,7 +13,7 @@ tmp/
 *.log
 
 # Configuration with secrets
-config.js
+back-end/config.js
 
 # Test files (optional - can be committed)
 # test_auth_module.js
