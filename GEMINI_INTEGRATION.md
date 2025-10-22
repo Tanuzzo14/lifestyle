@@ -121,12 +121,17 @@ Questo garantisce che l'applicazione continui a funzionare anche se:
 
 ## Configurazione API
 
-La chiave API Gemini è configurata nelle costanti:
+Le chiavi API Gemini sono ora centralizzate in `config.js`:
 
 ```javascript
-const GEMINI_API_KEY = 'AIzaSyCCE_m_W_L2DpBwA3hjaqMrOj-W1ws3Kv4';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+// Import configuration
+import { CONFIG } from './config.js';
+
+const GEMINI_API_KEY = CONFIG.GEMINI_API_KEY;
+const GEMINI_API_URL = CONFIG.GEMINI_API_URL;
 ```
+
+**Nota importante**: Il file `config.js` non è incluso nel controllo di versione per motivi di sicurezza. Usa `config.example.js` come template per creare il tuo file `config.js` con le tue chiavi API.
 
 ### Modello Utilizzato
 - **Modello**: `gemini-2.0-flash`
