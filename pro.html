@@ -42,6 +42,7 @@
   </div>
 </div>
 
+<script src="config.js"></script>
 <script type="module">
 // API Persistence with data.json
 // Uses PHP API (api.php) for server-side storage with data.json
@@ -73,10 +74,6 @@ async function apiCall(method, params = {}) {
     return { success: false, error: error.message };
   }
 }
-
-// ---------- Gemini Integration for File Format Standardization ----------
-const GEMINI_API_KEY = 'AIzaSyCCE_m_W_L2DpBwA3hjaqMrOj-W1ws3Kv4';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 async function standardizeWorkoutWithGemini(textContent) {
   try {
