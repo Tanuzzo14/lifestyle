@@ -1,7 +1,7 @@
 // Integration test for BASE_USER functionality using auth.js
-import { Auth } from './back-end/auth.js';
+import { Auth } from './auth.js';
 
-const API_URL = 'http://localhost:8000/back-end/api.php';
+const API_URL = 'http://localhost:8000/api.php';
 
 async function apiCall(method, params = {}) {
   try {
