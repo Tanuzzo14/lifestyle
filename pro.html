@@ -782,7 +782,8 @@ const proApp = {
 
       try {
           clientData.data.workout = newWorkoutArray;
-          await apiCall('POST', { userId: uid, data: clientData });
+          const { uid: _, ...dataToSave } = clientData;
+          await apiCall('POST', { userId: uid, data: dataToSave });
           
           this.clientsData[uid].data.workout = newWorkoutArray;
           this.openEditClientModal(uid, 'workout');
@@ -815,7 +816,8 @@ const proApp = {
       
       try {
           clientData.data.dietPlan.plan = newDietPlan;
-          await apiCall('POST', { userId: uid, data: clientData });
+          const { uid: _, ...dataToSave } = clientData;
+          await apiCall('POST', { userId: uid, data: dataToSave });
           
           this.clientsData[uid].data.dietPlan.plan = newDietPlan;
           this.openEditClientModal(uid, 'diet');
@@ -846,7 +848,8 @@ const proApp = {
           }
           
           clientData.data = data;
-          await apiCall('POST', { userId: uid, data: clientData });
+          const { uid: _, ...dataToSave } = clientData;
+          await apiCall('POST', { userId: uid, data: dataToSave });
           
           this.clientsData[uid].data = data;
           this.openEditClientModal(uid, fieldPath.includes('diet') ? 'diet' : 'workout');
@@ -869,7 +872,8 @@ const proApp = {
 
       try {
           clientData.data.measurementsLog = newLog;
-          await apiCall('POST', { userId: uid, data: clientData });
+          const { uid: _, ...dataToSave } = clientData;
+          await apiCall('POST', { userId: uid, data: dataToSave });
           
           this.clientsData[uid].data.measurementsLog = newLog;
           this.openEditClientModal(uid, 'measurements');
@@ -919,7 +923,8 @@ const proApp = {
 
       try {
           clientData.data.measurementsLog = newLog;
-          await apiCall('POST', { userId: uid, data: clientData });
+          const { uid: _, ...dataToSave } = clientData;
+          await apiCall('POST', { userId: uid, data: dataToSave });
           
           this.clientsData[uid].data.measurementsLog = newLog;
           this.openEditClientModal(uid, 'measurements');
@@ -939,7 +944,8 @@ const proApp = {
           clientData.data.dailyCompliance[today] = clientData.data.dailyCompliance[today] || {};
           clientData.data.dailyCompliance[today].workout = status;
           
-          await apiCall('POST', { userId: uid, data: clientData });
+          const { uid: _, ...dataToSave } = clientData;
+          await apiCall('POST', { userId: uid, data: dataToSave });
           this.clientsData[uid].data.dailyCompliance[today].workout = status;
 
           this.openEditClientModal(uid, 'workout');
@@ -959,7 +965,8 @@ const proApp = {
           clientData.data.dailyCompliance[today] = clientData.data.dailyCompliance[today] || {};
           clientData.data.dailyCompliance[today].diet = status;
           
-          await apiCall('POST', { userId: uid, data: clientData });
+          const { uid: _, ...dataToSave } = clientData;
+          await apiCall('POST', { userId: uid, data: dataToSave });
           this.clientsData[uid].data.dailyCompliance[today].diet = status;
 
           this.openEditClientModal(uid, 'diet');
@@ -998,7 +1005,8 @@ const proApp = {
           
           // Update client data
           clientData.data.workout = workoutData;
-          await apiCall('POST', { userId: uid, data: clientData });
+          const { uid: _, ...dataToSave } = clientData;
+          await apiCall('POST', { userId: uid, data: dataToSave });
           
           // Refresh data
           this.clientsData[uid].data.workout = workoutData;
@@ -1034,7 +1042,8 @@ const proApp = {
             clientData.data.dietPlan = { targetCalories: 2000, plan: [] };
           }
           clientData.data.dietPlan.plan = standardizedData;
-          await apiCall('POST', { userId: uid, data: clientData });
+          const { uid: _, ...dataToSave } = clientData;
+          await apiCall('POST', { userId: uid, data: dataToSave });
           
           // Refresh data
           this.clientsData[uid].data.dietPlan.plan = standardizedData;
@@ -1094,7 +1103,8 @@ const proApp = {
                 }));
                 
                 clientData.data.workout = workoutData;
-                await apiCall('POST', { userId: uid, data: clientData });
+                const { uid: _, ...dataToSave } = clientData;
+                await apiCall('POST', { userId: uid, data: dataToSave });
                 this.clientsData[uid].data.workout = workoutData;
                 alert(`File ${file.name} caricato e standardizzato (${workoutData.length} esercizi).`);
               }
@@ -1107,7 +1117,8 @@ const proApp = {
                   clientData.data.dietPlan = { targetCalories: 2000, plan: [] };
                 }
                 clientData.data.dietPlan.plan = standardizedData;
-                await apiCall('POST', { userId: uid, data: clientData });
+                const { uid: _, ...dataToSave } = clientData;
+                await apiCall('POST', { userId: uid, data: dataToSave });
                 this.clientsData[uid].data.dietPlan.plan = standardizedData;
                 alert(`File ${file.name} caricato e standardizzato (${standardizedData.length} giorni).`);
               }
