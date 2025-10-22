@@ -90,7 +90,7 @@ Convert any workout plan format (text, CSV, table, etc.) to this JSON format. Al
 Here is the workout plan to convert:
 ${textContent}`;
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(`${window.GEMINI_API_URL}?key=${window.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -147,7 +147,7 @@ Convert any diet plan format (text, CSV, table, etc.) to this JSON format. All t
 Here is the diet plan to convert:
 ${textContent}`;
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(`${window.GEMINI_API_URL}?key=${window.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
