@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Gemini Config</title>
+    <script src="config.js"></script>
+</head>
+<body>
+    <h1>Test Gemini Configuration</h1>
+    <div id="output"></div>
+
+    <script type="module">
+        const output = document.getElementById('output');
+        
+        // Test if variables are accessible in ES6 module
+        if (window.GEMINI_API_KEY && window.GEMINI_API_URL) {
+            output.innerHTML = `
+                <p style="color: green;">✅ SUCCESS: Gemini API configuration is accessible!</p>
+                <p><strong>API Key:</strong> ${window.GEMINI_API_KEY.substring(0, 10)}...</p>
+                <p><strong>API URL:</strong> ${window.GEMINI_API_URL}</p>
+            `;
+        } else {
+            output.innerHTML = `
+                <p style="color: red;">❌ ERROR: Gemini API configuration not accessible!</p>
+                <p>GEMINI_API_KEY: ${typeof window.GEMINI_API_KEY}</p>
+                <p>GEMINI_API_URL: ${typeof window.GEMINI_API_URL}</p>
+            `;
+        }
+    </script>
+</body>
+</html>
