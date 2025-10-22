@@ -414,7 +414,9 @@ const proApp = {
     if (!userKey) return alert("Inserisci un nome utente valido.");
     const newClientUsername = userKey.toUpperCase();
     const clientId = 'client_' + Date.now() + '_' + Math.floor(Math.random()*10000);
-    const passwordHash = simpleHash(password).toString();
+    // If no password provided, use username as default password
+    const actualPassword = (password && password.trim()) ? password : userKey;
+    const passwordHash = simpleHash(actualPassword).toString();
 
     try {
       // 1) crea documento "utente" 
