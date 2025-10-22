@@ -521,6 +521,11 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
             payload.createdBy = state.createdBy;
           }
           
+          // Preserve passwordHash field if it exists
+          if (state.passwordHash) {
+            payload.passwordHash = state.passwordHash;
+          }
+          
           let savedToDataJson = false;
           
           // Try to save to data.json
@@ -604,6 +609,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
             state.sleepStartTimestamp = obj.sleepStartTimestamp || null;
             state.userType = obj.userType || 'user';
             state.createdBy = obj.createdBy || null;
+            state.passwordHash = obj.passwordHash || null;
 
             // start sleep timer if needed
             if (state.sleepStartTimestamp && !state.sleepTimerIntervalId) {
