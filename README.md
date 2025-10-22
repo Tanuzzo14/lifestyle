@@ -27,14 +27,29 @@ Il progetto utilizza chiavi API (es. Gemini API) che sono centralizzate in un fi
 
 3. **Importante**: Il file `config.js` è escluso dal controllo di versione (`.gitignore`) per proteggere le chiavi sensibili.
 
+## Sicurezza
+
+Il progetto include un file `.htaccess` che protegge i file sensibili dall'accesso diretto:
+
+- **config.js** - File con chiavi API (bloccato)
+- **data.json** - File con dati utenti (bloccato)
+- File di backup e nascosti (bloccati)
+- Directory listing disabilitato
+
+Per maggiori dettagli sulla protezione, consulta [HTACCESS_PROTECTION.md](HTACCESS_PROTECTION.md).
+
+**Requisiti**: Server Apache con mod_rewrite e AllowOverride abilitato.
+
 ## Deployment
 
 ### Hosting con PHP
-L'applicazione richiede un server PHP per la persistenza dei dati:
-1. Caricare tutti i file su un server con supporto PHP
-2. Creare il file `config.js` con le proprie chiavi API (vedi sezione Configurazione)
-3. Assicurarsi che il file data.json sia scrivibile dal server (permessi 666 o 777)
-4. L'applicazione sarà accessibile all'URL del server
+L'applicazione richiede un server Apache/PHP per la persistenza dei dati:
+1. Caricare tutti i file su un server con supporto Apache e PHP
+2. Verificare che mod_rewrite e mod_headers siano abilitati
+3. Assicurarsi che AllowOverride sia impostato su "All" nella configurazione Apache
+4. Creare il file `config.js` con le proprie chiavi API (vedi sezione Configurazione)
+5. Assicurarsi che il file data.json sia scrivibile dal server (permessi 660 o 664)
+6. L'applicazione sarà accessibile all'URL del server
 
 ### Hosting Locale (per test)
 Per testare in locale con PHP:
