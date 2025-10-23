@@ -33,7 +33,7 @@ if (!file_exists(__DIR__ . '/config.php')) {
 require_once __DIR__ . '/config.php';
 
 // Check if API key is configured
-if (!defined('GEMINI_API_KEY') || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
+if (!defined('GEMINI_API_KEY') || GEMINI_API_KEY === 'AIzaSyCCE_m_W_L2DpBwA3hjaqMrOj-W1ws3Kv4') {
     http_response_code(500);
     echo json_encode(['error' => 'Gemini API key not configured. Please configure config.php with a valid API key.']);
     exit();
