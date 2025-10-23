@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Gemini API Direct Integration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        #response {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Gemini API Direct Integration</h1>
+    
+    <div id="status" class="status info">
+        Caricamento configurazione...
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <button id="testBtn" onclick="testGeminiAPI()" disabled>Test API Connection</button>
+    </div>
+    
+    <div id="response" style="display: none;">
+        <strong>Risposta API:</strong>
+        <pre id="responseText"></pre>
+    </div>
+    
+    <script src="config.js"></script>
+    <script>
+        let configLoaded = false;
+        
+        // Wait for config to load
+        setTimeout(() => {
+            const statusDiv = document.getElementById('status');
+            const testBtn = document.getElementById('testBtn');
+            
+            if (GEMINI_API_KEY && GEMINI_API_URL) {
+                if (GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `
+                        <strong>Errore:</strong> La chiave API non è stata configurata.<br>
+                        <small>Modifica il file config.json e inserisci la tua chiave API Gemini.</small>
+                    `;
+                } else {
+                    configLoaded = true;
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = `
+                        <strong>✓ Configurazione caricata con successo</strong><br>
+                        <small>API URL: ${GEMINI_API_URL}</small><br>
+                        <small>API Key: ${GEMINI_API_KEY.substring(0, 10)}...</small>
+                    `;
+                    testBtn.disabled = false;
+                }
+            } else {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `
+                    <strong>Errore:</strong> Impossibile caricare la configurazione da config.json<br>
+                    <small>Assicurati che il file config.json esista nella directory principale.</small>
+                `;
+            }
+        }, 500);
+        
+        async function testGeminiAPI() {
+            const statusDiv = document.getElementById('status');
+            const testBtn = document.getElementById('testBtn');
+            const responseDiv = document.getElementById('response');
+            const responseText = document.getElementById('responseText');
+            
+            if (!configLoaded) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = 'Configurazione non caricata. Ricarica la pagina.';
+                return;
+            }
+            
+            testBtn.disabled = true;
+            statusDiv.className = 'status info';
+            statusDiv.textContent = 'Testing connessione API...';
+            responseDiv.style.display = 'none';
+            
+            try {
+                const prompt = 'Rispondi con "Hello from Gemini!" per confermare che la connessione funziona.';
+                
+                const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contents: [
+                            {
+                                parts: [
+                                    {
+                                        text: prompt
+                                    }
+                                ]
+                            }
+                        ]
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`API Error ${response.status}: ${errorData.error?.message || 'Unknown error'}`);
+                }
+                
+                const data = await response.json();
+                const content = data.candidates[0].content.parts[0].text;
+                
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = `
+                    <strong>✓ Connessione API riuscita!</strong><br>
+                    <small>L'integrazione diretta con Gemini funziona correttamente.</small>
+                `;
+                
+                responseDiv.style.display = 'block';
+                responseText.textContent = JSON.stringify(data, null, 2);
+                
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `
+                    <strong>✗ Errore connessione API</strong><br>
+                    <small>${error.message}</small><br>
+                    <br>
+                    <strong>Possibili cause:</strong>
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li>Chiave API non valida o scaduta</li>
+                        <li>API Key restrictions configurate in Google Cloud Console</li>
+                        <li>Quota API esaurita</li>
+                        <li>Problemi di rete o CORS</li>
+                    </ul>
+                `;
+                
+                responseDiv.style.display = 'block';
+                responseText.textContent = error.stack || error.toString();
+            } finally {
+                testBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
