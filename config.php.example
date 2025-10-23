@@ -6,7 +6,9 @@
 
 // Gemini API Configuration
 define('GEMINI_API_KEY', 'YOUR_GEMINI_API_KEY_HERE');
-define('GEMINI_API_URL', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent');
+// Use gemini-1.5-flash or gemini-pro as the model
+// Note: gemini-2.0-flash may not be available yet - use gemini-1.5-flash instead
+define('GEMINI_API_URL', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent');
 
 // You can add other sensitive configurations here
 // define('OTHER_API_KEY', 'your-other-api-key');
