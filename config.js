@@ -2,7 +2,7 @@
 // NOTA: Le chiamate all'API Gemini sono ora dirette dal client
 // La configurazione viene caricata da config.json
 let GEMINI_API_KEY = 'AIzaSyCCE_m_W_L2DpBwA3hjaqMrOj-W1ws3Kv4';
-let GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash';
+let GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent';
 
 // Carica la configurazione da config.json
 fetch('config.json')
