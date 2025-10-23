@@ -206,6 +206,8 @@ const proApp = {
   clientsData: {},
   editingClient: null,
   currentClientView: 'workout', // Nuova variabile per la scheda del modale
+  editingWorkoutId: null, // Per tracciare quale esercizio è in modifica
+  editingDietMeal: null, // Per tracciare quale pasto è in modifica (formato: {dayIndex, mealIndex})
 
   showError(message) {
     const loading = document.getElementById('loading-indicator');
@@ -541,11 +543,32 @@ const proApp = {
 
         const workoutDaysHTML = Object.keys(workoutsByDay).sort().map(day => {
             const exercisesHTML = workoutsByDay[day].map((w, index) => {
+                // Se questo esercizio è in modifica, mostra il form
+                if (proApp.editingWorkoutId === w.id) {
+                    return `<li class="py-2 border-b last:border-b-0 text-sm bg-blue-50 p-2 rounded-lg mt-2">
+                        <form onsubmit="event.preventDefault(); proApp.updateClientWorkout('${uid}', ${w.id}, this.day.value, this.exercise.value, this.sets.value, this.reps.value, this.load.value);">
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <input type="text" name="day" value="${w.day}" placeholder="GIORNO" required class="w-full p-2 border rounded-lg text-xs">
+                                <input type="text" name="exercise" value="${w.exercise}" placeholder="ESERCIZIO" required class="w-full p-2 border rounded-lg text-xs">
+                            </div>
+                            <div class="grid grid-cols-3 gap-2">
+                                <input type="number" name="sets" value="${w.sets}" placeholder="SERIE" class="w-full p-2 border rounded-lg text-xs">
+                                <input type="number" name="reps" value="${w.reps}" placeholder="REP" class="w-full p-2 border rounded-lg text-xs">
+                                <input type="text" name="load" value="${w.load}" placeholder="CARICO" class="w-full p-2 border rounded-lg text-xs">
+                            </div>
+                            <div class="flex justify-between mt-2">
+                                <button type="submit" class="text-green-600 hover:text-green-800 font-semibold text-xs">SALVA</button>
+                                <button type="button" onclick="proApp.cancelEditingWorkout()" class="text-gray-500 hover:text-gray-700 text-xs">ANNULLA</button>
+                            </div>
+                        </form>
+                    </li>`;
+                }
+                // Altrimenti mostra la visualizzazione normale
                 return `<li class="py-2 border-b last:border-b-0 text-sm">
                     <div class="flex justify-between items-center">
                         <span class="font-semibold">${w.exercise?.toUpperCase() || 'N/D'}</span>
                         <div class="flex space-x-2">
-                            <button onclick="proApp.editClientWorkout('${uid}', ${w.id})" class="text-blue-500 hover:text-blue-700 transition">Modifica</button>
+                            <button onclick="proApp.startEditingWorkout(${w.id})" class="text-blue-500 hover:text-blue-700 transition">Modifica</button>
                             <button onclick="proApp.removeClientWorkout('${uid}', ${w.id})" class="text-red-500 hover:text-red-700 transition">Rimuovi</button>
                         </div>
                     </div>
@@ -597,13 +620,34 @@ const proApp = {
             
 
         const dayLabels = ['LUNEDÌ','MARTEDÌ','MERCOLEDÌ','GIOVEDÌ','VENERDÌ','SABATO','DOMENICA'];
-        const dietPlanHTML = (clientState.dietPlan?.plan || []).sort((a, b) => dayLabels.indexOf(a.day) - dayLabels.indexOf(b.day)).map((dayPlan) => {
+        const dietPlanHTML = (clientState.dietPlan?.plan || []).sort((a, b) => dayLabels.indexOf(a.day) - dayLabels.indexOf(b.day)).map((dayPlan, dayIndex) => {
             const mealsHTML = dayPlan.meals.map((meal, mealIndex) => {
+                // Se questo pasto è in modifica, mostra il form
+                if (proApp.editingDietMeal && proApp.editingDietMeal.dayIndex === dayIndex && proApp.editingDietMeal.mealIndex === mealIndex) {
+                    return `<li class="py-2 border-b last:border-b-0 text-sm bg-blue-50 p-2 rounded-lg mt-2">
+                        <form onsubmit="event.preventDefault(); proApp.updateClientDietMeal('${uid}', ${dayIndex}, ${mealIndex}, this.category.value, this.description.value, this.weight.value, this.type.value, this.calories.value);">
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <input type="text" name="category" value="${meal.category}" placeholder="TIPOLOGIA (COLAZIONE)" required class="w-full p-2 border rounded-lg text-xs">
+                                <input type="text" name="description" value="${meal.description}" placeholder="DESCRIZIONE (UOVA, PANE)" required class="w-full p-2 border rounded-lg text-xs">
+                            </div>
+                            <div class="grid grid-cols-3 gap-2">
+                                <input type="text" name="weight" value="${meal.weight}" placeholder="GRAMMATURA (150G)" required class="w-full p-2 border rounded-lg text-xs">
+                                <input type="text" name="type" value="${meal.type}" placeholder="ALTRO (RICETTA)" required class="w-full p-2 border rounded-lg text-xs">
+                                <input type="number" name="calories" value="${meal.calories}" placeholder="KCAL" required class="w-full p-2 border rounded-lg text-xs">
+                            </div>
+                            <div class="flex justify-between mt-2">
+                                <button type="submit" class="text-green-600 hover:text-green-800 font-semibold text-xs">SALVA</button>
+                                <button type="button" onclick="proApp.cancelEditingDietMeal()" class="text-gray-500 hover:text-gray-700 text-xs">ANNULLA</button>
+                            </div>
+                        </form>
+                    </li>`;
+                }
+                // Altrimenti mostra la visualizzazione normale
                 return `<li class="py-2 border-b last:border-b-0 text-sm">
                     <div class="flex justify-between items-center">
                         <span class="font-semibold">${meal.category}: ${meal.description}</span>
                         <div class="flex space-x-2">
-                            <button onclick="proApp.editClientDietMeal('${uid}', '${dayPlan.day}', ${mealIndex})" class="text-blue-500 hover:text-blue-700 transition">Modifica</button>
+                            <button onclick="proApp.startEditingDietMeal(${dayIndex}, ${mealIndex})" class="text-blue-500 hover:text-blue-700 transition">Modifica</button>
                             <button onclick="proApp.removeClientDietMeal('${uid}', '${dayPlan.day}', ${mealIndex})" class="text-red-500 hover:text-red-700 transition">Rimuovi</button>
                         </div>
                     </div>
@@ -754,6 +798,8 @@ const proApp = {
     if (m){ m.classList.add('hidden'); m.classList.remove('flex'); } 
     this.editingClient = null; 
     this.currentClientView = 'workout'; // Reset della vista
+    this.editingWorkoutId = null; // Reset editing state
+    this.editingDietMeal = null; // Reset editing state
   },
 
   async saveClientEdits() {
@@ -784,56 +830,97 @@ const proApp = {
 
   // ------------- NUOVE FUNZIONI CRUD PER IL PROFESSIONISTA -------------
   
-  // Modifica esercizio esistente
-  async editClientWorkout(uid, exerciseId) {
+  // Inizia la modifica di un esercizio (mostra il form inline)
+  startEditingWorkout(exerciseId) {
+      this.editingWorkoutId = exerciseId;
+      this.openEditClientModal(this.editingClient, 'workout');
+  },
+  
+  // Annulla la modifica di un esercizio
+  cancelEditingWorkout() {
+      this.editingWorkoutId = null;
+      this.openEditClientModal(this.editingClient, 'workout');
+  },
+  
+  // Aggiorna un esercizio esistente (simile a index.html)
+  async updateClientWorkout(uid, exerciseId, day, exercise, sets, reps, load) {
       if (!uid) return;
       
       const clientData = this.clientsData[uid];
       if (!clientData || clientData.userType !== 'user') return alert("Cliente non valido.");
       
       const workout = clientData.data.workout || [];
-      const exerciseIndex = workout.findIndex(w => w.id === exerciseId);
+      const workoutItem = workout.find(w => w.id === exerciseId);
       
-      if (exerciseIndex === -1) return alert("Esercizio non trovato.");
-      
-      const exercise = workout[exerciseIndex];
-      
-      // Chiedi all'utente i nuovi valori
-      const newDay = prompt("Giorno (attuale: " + exercise.day + "):", exercise.day);
-      if (newDay === null) return; // Annullato
-      
-      const newExercise = prompt("Nome esercizio (attuale: " + exercise.exercise + "):", exercise.exercise);
-      if (newExercise === null) return; // Annullato
-      
-      const newSets = prompt("Serie (attuale: " + exercise.sets + "):", exercise.sets);
-      if (newSets === null) return; // Annullato
-      
-      const newReps = prompt("Ripetizioni (attuale: " + exercise.reps + "):", exercise.reps);
-      if (newReps === null) return; // Annullato
-      
-      const newLoad = prompt("Carico (attuale: " + exercise.load + "):", exercise.load);
-      if (newLoad === null) return; // Annullato
+      if (!workoutItem) return alert("Esercizio non trovato.");
       
       try {
           // Aggiorna l'esercizio
-          workout[exerciseIndex] = {
-              ...exercise,
-              day: String(newDay).toUpperCase(),
-              exercise: newExercise,
-              sets: parseInt(newSets) || 0,
-              reps: parseInt(newReps) || 0,
-              load: newLoad
-          };
+          workoutItem.day = String(day).toUpperCase();
+          workoutItem.exercise = exercise;
+          workoutItem.sets = parseInt(sets) || 0;
+          workoutItem.reps = parseInt(reps) || 0;
+          workoutItem.load = load ? load.trim().toUpperCase() : 'N/D';
           
           clientData.data.workout = workout;
+          clientData.data.workoutUpdatedAt = new Date().toISOString();
           await apiCall('POST', { userId: uid, data: clientData });
           
           this.clientsData[uid].data.workout = workout;
+          this.editingWorkoutId = null;
           this.openEditClientModal(uid, 'workout');
-          alert("Esercizio modificato con successo!");
       } catch (err) {
-          console.error("Errore editClientWorkout:", err);
+          console.error("Errore updateClientWorkout:", err);
           alert("Errore durante la modifica dell'esercizio: " + (err?.message || err));
+      }
+  },
+  
+  // Inizia la modifica di un pasto (mostra il form inline)
+  startEditingDietMeal(dayIndex, mealIndex) {
+      this.editingDietMeal = { dayIndex, mealIndex };
+      this.openEditClientModal(this.editingClient, 'diet');
+  },
+  
+  // Annulla la modifica di un pasto
+  cancelEditingDietMeal() {
+      this.editingDietMeal = null;
+      this.openEditClientModal(this.editingClient, 'diet');
+  },
+  
+  // Aggiorna un pasto esistente (simile a index.html)
+  async updateClientDietMeal(uid, dayIndex, mealIndex, category, description, weight, type, calories) {
+      if (!uid) return;
+      
+      const clientData = this.clientsData[uid];
+      if (!clientData || clientData.userType !== 'user') return alert("Cliente non valido.");
+      
+      const parsedCalories = parseInt(calories);
+      if (isNaN(parsedCalories) || parsedCalories <= 0) return alert("LE KCAL DEVONO ESSERE UN NUMERO POSITIVO.");
+      
+      const dietPlan = clientData.data.dietPlan?.plan || [];
+      const day = dietPlan[dayIndex];
+      
+      if (!day || !day.meals[mealIndex]) return alert("Pasto non trovato.");
+      
+      try {
+          // Aggiorna il pasto
+          const meal = day.meals[mealIndex];
+          meal.category = category.toUpperCase();
+          meal.description = description.toUpperCase();
+          meal.weight = weight.toUpperCase();
+          meal.type = type.toUpperCase();
+          meal.calories = parsedCalories;
+          
+          clientData.data.dietPlan.plan = dietPlan;
+          clientData.data.dietPlan.updatedAt = new Date().toISOString();
+          await apiCall('POST', { userId: uid, data: clientData });
+          
+          this.clientsData[uid].data.dietPlan.plan = dietPlan;
+          this.editingDietMeal = null;
+          this.openEditClientModal(uid, 'diet');
+      } catch (err) {
+          console.error("Errore updateClientDietMeal:", err);
+          alert("Errore durante la modifica del pasto: " + (err?.message || err));
       }
   },
   
@@ -849,18 +936,18 @@ const proApp = {
       
       try {
           clientData.data.workout = newWorkout;
+          clientData.data.workoutUpdatedAt = new Date().toISOString();
           await apiCall('POST', { userId: uid, data: clientData });
           
           this.clientsData[uid].data.workout = newWorkout;
           this.openEditClientModal(uid, 'workout');
-          alert("Esercizio rimosso con successo!");
       } catch (err) {
           console.error("Errore removeClientWorkout:", err);
           alert("Errore durante la rimozione dell'esercizio: " + (err?.message || err));
       }
   },
   
-  // Esempio: Aggiunta di un Esercizio al Cliente
+  // Aggiunta di un Esercizio al Cliente
   async addClientWorkout(uid, day, exercise, sets, reps, load) {
       if (!uid) return;
 
@@ -871,77 +958,26 @@ const proApp = {
           id: Date.now() + Math.floor(Math.random()*10000),
           day: String(day).toUpperCase(),
           exercise: exercise,
-          sets: sets,
-          reps: reps,
-          load: load
+          sets: parseInt(sets) || 0,
+          reps: parseInt(reps) || 0,
+          load: load ? load.trim().toUpperCase() : 'N/D'
       };
 
       const newWorkoutArray = [...(clientData.data.workout || []), newWorkout];
 
       try {
           clientData.data.workout = newWorkoutArray;
+          clientData.data.workoutUpdatedAt = new Date().toISOString();
           await apiCall('POST', { userId: uid, data: clientData });
           
           this.clientsData[uid].data.workout = newWorkoutArray;
           this.openEditClientModal(uid, 'workout');
-          alert("Esercizio aggiunto con successo!");
       } catch (err) {
           console.error("Errore addClientWorkout:", err);
           alert("Errore durante l'aggiunta dell'esercizio: " + (err?.message || err));
       }
   },
 
-  // Modifica pasto esistente
-  async editClientDietMeal(uid, dayName, mealIndex) {
-      if (!uid) return;
-      
-      const clientData = this.clientsData[uid];
-      if (!clientData || clientData.userType !== 'user') return alert("Cliente non valido.");
-      
-      const dietPlan = clientData.data.dietPlan?.plan || [];
-      const dayPlan = dietPlan.find(p => p.day === dayName);
-      
-      if (!dayPlan || !dayPlan.meals[mealIndex]) return alert("Pasto non trovato.");
-      
-      const meal = dayPlan.meals[mealIndex];
-      
-      // Chiedi all'utente i nuovi valori
-      const newCategory = prompt("Categoria (attuale: " + meal.category + "):", meal.category);
-      if (newCategory === null) return; // Annullato
-      
-      const newDescription = prompt("Descrizione (attuale: " + meal.description + "):", meal.description);
-      if (newDescription === null) return; // Annullato
-      
-      const newWeight = prompt("Grammatura (attuale: " + meal.weight + "):", meal.weight);
-      if (newWeight === null) return; // Annullato
-      
-      const newType = prompt("Tipo (attuale: " + meal.type + "):", meal.type);
-      if (newType === null) return; // Annullato
-      
-      const newCalories = prompt("Calorie (attuale: " + meal.calories + "):", meal.calories);
-      if (newCalories === null) return; // Annullato
-      
-      try {
-          // Aggiorna il pasto
-          dayPlan.meals[mealIndex] = {
-              category: newCategory,
-              description: newDescription,
-              weight: newWeight,
-              type: newType,
-              calories: parseInt(newCalories) || 0
-          };
-          
-          clientData.data.dietPlan.plan = dietPlan;
-          await apiCall('POST', { userId: uid, data: clientData });
-          
-          this.clientsData[uid].data.dietPlan.plan = dietPlan;
-          this.openEditClientModal(uid, 'diet');
-          alert("Pasto modificato con successo!");
-      } catch (err) {
-          console.error("Errore editClientDietMeal:", err);
-          alert("Errore durante la modifica del pasto: " + (err?.message || err));
-      }
-  },
   
   // Rimuovi pasto esistente
   async removeClientDietMeal(uid, dayName, mealIndex) {
@@ -967,11 +1003,11 @@ const proApp = {
           }
           
           clientData.data.dietPlan.plan = dietPlan;
+          clientData.data.dietPlan.updatedAt = new Date().toISOString();
           await apiCall('POST', { userId: uid, data: clientData });
           
           this.clientsData[uid].data.dietPlan.plan = dietPlan;
           this.openEditClientModal(uid, 'diet');
-          alert("Pasto rimosso con successo!");
       } catch (err) {
           console.error("Errore removeClientDietMeal:", err);
           alert("Errore durante la rimozione del pasto: " + (err?.message || err));
@@ -984,7 +1020,13 @@ const proApp = {
       const clientData = this.clientsData[uid];
       if (!clientData || clientData.userType !== 'user') return alert("Cliente non valido.");
       
-      const newMeal = { category, description, weight, type, calories: Number(calories) };
+      const newMeal = { 
+          category: category.toUpperCase(), 
+          description: description.toUpperCase(), 
+          weight: weight.toUpperCase(), 
+          type: type.toUpperCase(), 
+          calories: Number(calories) 
+      };
       
       const dietPlan = clientData.data.dietPlan?.plan || [];
       const dayIndex = dietPlan.findIndex(p => p.day === String(day).toUpperCase());
@@ -1000,11 +1042,11 @@ const proApp = {
       
       try {
           clientData.data.dietPlan.plan = newDietPlan;
+          clientData.data.dietPlan.updatedAt = new Date().toISOString();
           await apiCall('POST', { userId: uid, data: clientData });
           
           this.clientsData[uid].data.dietPlan.plan = newDietPlan;
           this.openEditClientModal(uid, 'diet');
-          alert("Pasto aggiunto al piano dieta con successo!");
       } catch (err) {
           console.error("Errore addClientDietMeal:", err);
           alert("Errore durante l'aggiunta del pasto: " + (err?.message || err));
