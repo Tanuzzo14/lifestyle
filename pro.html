@@ -21,9 +21,57 @@
         opacity: 0.6;
         cursor: not-allowed;
     }
+    
+    /* Loading spinner */
+    #loading-spinner {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        display: none;
+        justify-content: center;
+        align-items: center;
+    }
+    #loading-spinner.active {
+        display: flex;
+    }
+    .spinner {
+        width: 60px;
+        height: 60px;
+        border: 5px solid #f3f4f6;
+        border-top: 5px solid #2563eb;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* View transitions */
+    #app {
+        transition: opacity 0.3s ease-in-out;
+    }
+    #app.transitioning {
+        opacity: 0;
+    }
+    
+    /* Disable interaction during loading */
+    body.loading-active {
+        pointer-events: none;
+    }
+    body.loading-active #loading-spinner {
+        pointer-events: auto;
+    }
 </style>
 </head>
 <body class="bg-gray-100 text-gray-800 min-h-screen">
+<div id="loading-spinner">
+    <div class="spinner"></div>
+</div>
 <div id="app" class="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
   <div id="loading-indicator" class="text-center py-10 bg-white rounded-xl shadow">
     <svg class="animate-spin h-8 w-8 text-indigo-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -76,6 +124,7 @@ async function apiCall(method, params = {}) {
 }
 
 async function standardizeWorkoutWithGemini(textContent) {
+  showSpinner();
   try {
     const prompt = `You are a helpful assistant that converts workout plans to a standardized JSON format.
 The output must be a JSON array where each object has these fields:
@@ -129,10 +178,13 @@ ${textContent}`;
   } catch (error) {
     console.error('Error standardizing workout with Gemini:', error);
     throw new Error('Impossibile standardizzare il piano con Gemini: ' + error.message);
+  } finally {
+    hideSpinner();
   }
 }
 
 async function standardizeDietWithGemini(textContent) {
+  showSpinner();
   try {
     const prompt = `You are a helpful assistant that converts diet plans to a standardized JSON format.
 The output must be a JSON array where each object represents a day with these fields:
@@ -188,6 +240,8 @@ ${textContent}`;
   } catch (error) {
     console.error('Error standardizing diet with Gemini:', error);
     throw new Error('Impossibile standardizzare il piano dieta con Gemini: ' + error.message);
+  } finally {
+    hideSpinner();
   }
 }
 
@@ -198,6 +252,23 @@ function simpleHash(str) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
   return hash;
+}
+
+// Loading spinner functions
+function showSpinner() {
+  const spinner = document.getElementById('loading-spinner');
+  if (spinner) {
+    spinner.classList.add('active');
+    document.body.classList.add('loading-active');
+  }
+}
+
+function hideSpinner() {
+  const spinner = document.getElementById('loading-spinner');
+  if (spinner) {
+    spinner.classList.remove('active');
+    document.body.classList.remove('loading-active');
+  }
 }
 
 const proApp = {
@@ -512,11 +583,23 @@ const proApp = {
 
   // Nuova funzione per cambiare scheda
   setClientView(view) {
-      this.currentClientView = view;
-      // Rirenderizza l'interno del modale per mostrare la nuova scheda
       const modal = document.getElementById('edit-client-modal');
       if (modal && !modal.classList.contains('hidden')) {
-          this.openEditClientModal(this.editingClient, view);
+          // Add fade out transition
+          const appElement = document.getElementById('app');
+          if (appElement) {
+              appElement.classList.add('transitioning');
+              setTimeout(() => {
+                  this.currentClientView = view;
+                  this.openEditClientModal(this.editingClient, view);
+                  setTimeout(() => {
+                      appElement.classList.remove('transitioning');
+                  }, 10);
+              }, 300);
+          } else {
+              this.currentClientView = view;
+              this.openEditClientModal(this.editingClient, view);
+          }
       }
   },
 
@@ -1202,6 +1285,7 @@ const proApp = {
       if (!uid) return;
       console.log(`Tentativo di importazione Allenamento per ${uid}`, rawText);
       
+      showSpinner();
       try {
         const clientData = this.clientsData[uid];
         if (!clientData) {
@@ -1236,6 +1320,8 @@ const proApp = {
       } catch (error) {
         console.error('Error importing workout plan:', error);
         alert('Errore durante l\'importazione: ' + error.message);
+      } finally {
+        hideSpinner();
       }
       
       this.openEditClientModal(uid, 'workout');
@@ -1245,6 +1331,7 @@ const proApp = {
       if (!uid) return;
       console.log(`Tentativo di importazione Dieta per ${uid}`, rawText);
       
+      showSpinner();
       try {
         const clientData = this.clientsData[uid];
         if (!clientData) {
@@ -1272,6 +1359,8 @@ const proApp = {
       } catch (error) {
         console.error('Error importing diet plan:', error);
         alert('Errore durante l\'importazione: ' + error.message);
+      } finally {
+        hideSpinner();
       }
       
       this.openEditClientModal(uid, 'diet');
@@ -1283,6 +1372,7 @@ const proApp = {
       
       console.log(`Caricamento file ${file.name} per ${uid} (${type})`);
       
+      showSpinner();
       try {
         const clientData = this.clientsData[uid];
         if (!clientData) {
@@ -1344,6 +1434,8 @@ const proApp = {
           } catch (error) {
             console.error('Error processing file:', error);
             alert('Errore durante l\'elaborazione del file: ' + error.message);
+          } finally {
+            hideSpinner();
           }
         };
         
@@ -1358,6 +1450,7 @@ const proApp = {
       } catch (error) {
         console.error('Error uploading file:', error);
         alert('Errore durante il caricamento del file: ' + error.message);
+        hideSpinner();
       }
   },
   // FINE NUOVE FUNZIONI CRUD
