@@ -5,6 +5,7 @@ data.json.backup
 
 # Configuration files with sensitive data
 config.php
+config.json
 
 # File temporanei
 *.tmp
