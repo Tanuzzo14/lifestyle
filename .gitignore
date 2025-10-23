@@ -3,6 +3,9 @@ data.json
 data.json.backup
 *.backup
 
+# Configuration files with sensitive data
+config.php
+
 # File temporanei
 *.tmp
 *.bak

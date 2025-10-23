@@ -121,16 +121,46 @@ Questo garantisce che l'applicazione continui a funzionare anche se:
 
 ## Configurazione API
 
-La chiave API Gemini è configurata nelle costanti:
+**IMPORTANTE: Configurazione Sicura Implementata**
 
-```javascript
-const GEMINI_API_KEY = 'AIzaSyCCE_m_W_L2DpBwA3hjaqMrOj-W1ws3Kv4';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+La chiave API Gemini è ora gestita in modo sicuro lato server. La configurazione è stata completamente ristrutturata per proteggere la chiave API.
+
+### File di Configurazione
+
+1. **config.php** - Contiene la chiave API (NON committato in Git)
+2. **config.php.example** - Template per la configurazione
+3. **gemini_proxy.php** - Proxy PHP per le chiamate API sicure
+4. **config.js** - Configurazione client (contiene solo URL del proxy)
+
+### Setup
+
+```bash
+# Copia il template di configurazione
+cp config.php.example config.php
+
+# Modifica config.php e inserisci la tua chiave API
+# define('GEMINI_API_KEY', 'la-tua-chiave-api-qui');
 ```
+
+### Architettura Sicura
+
+```
+Client (Browser) → gemini_proxy.php (Server) → Google Gemini API
+                      ↑
+                      Legge la chiave da config.php
+```
+
+### Vantaggi
+
+1. **Chiave API Protetta**: Mai esposta al client
+2. **Centralizzata**: Facile da gestire e ruotare
+3. **Sicura in Git**: config.php è escluso dal version control
+4. **Validazione Server-Side**: Possibilità di aggiungere autenticazione e rate limiting
 
 ### Modello Utilizzato
 - **Modello**: `gemini-2.0-flash`
 - **API Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`
+- **Proxy Locale**: `gemini_proxy.php`
 - **Prompt**: Ottimizzati per ogni tipo di conversione
 
 ## Vantaggi dell'Integrazione
@@ -161,36 +191,77 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
 
 ## Note di Sicurezza
 
-⚠️ **IMPORTANTE**: La chiave API è attualmente hardcoded nel codice client-side. Per un ambiente di produzione:
+✅ **IMPLEMENTATO - Sicurezza Migliorata**: La chiave API è ora gestita in modo sicuro lato server!
 
-1. **Spostare la chiave lato server**: Creare un endpoint PHP che faccia da proxy per le chiamate OpenAI
-2. **Usare variabili d'ambiente**: Non committare mai chiavi API nel repository
-3. **Implementare rate limiting**: Prevenire abusi dell'API
-4. **Aggiungere autenticazione**: Assicurarsi che solo utenti autenticati possano usare la funzionalità
+### Implementazione Corrente
 
-### Esempio di Implementazione Sicura (Raccomandato)
+La soluzione sicura è stata implementata con i seguenti componenti:
 
-Creare un file `gemini_proxy.php`:
+1. **config.php**: File di configurazione server-side (escluso da Git)
+   - Contiene la chiave API Gemini
+   - Mai esposto al client
+   - Protetto tramite .gitignore
 
-```php
-<?php
-header('Content-Type: application/json');
+2. **gemini_proxy.php**: Proxy server-side per le chiamate API
+   - Riceve richieste dal client
+   - Aggiunge la chiave API in modo sicuro
+   - Inoltra la richiesta a Google Gemini
+   - Restituisce la risposta al client
 
-// Verifica autenticazione utente
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);
-    exit(json_encode(['error' => 'Non autenticato']));
-}
+3. **config.js**: Configurazione client-side (aggiornata)
+   - Contiene solo l'URL del proxy locale
+   - Nessuna chiave API esposta
 
-$apiKey = getenv('GEMINI_API_KEY'); // Da variabile d'ambiente
-$input = json_decode(file_get_contents('php://input'), true);
+### Vantaggi della Soluzione
 
-// Forward request to Gemini
-// ... implementazione proxy ...
+✓ **Sicurezza**: La chiave API non è mai visibile nel browser  
+✓ **Centralizzazione**: Facile gestione e rotazione delle chiavi  
+✓ **Version Control**: config.php escluso automaticamente da Git  
+✓ **Scalabilità**: Possibilità di aggiungere autenticazione e rate limiting  
+✓ **Compatibilità**: Nessun cambiamento necessario nel codice client esistente
+
+### Setup per Deployment
+
+```bash
+# 1. Copia il template di configurazione
+cp config.php.example config.php
+
+# 2. Modifica config.php con la tua chiave API
+nano config.php
+
+# 3. Imposta i permessi corretti (opzionale, consigliato su Linux)
+chmod 600 config.php
+
+# 4. Testa la configurazione
+./test_gemini_setup.sh
 ```
 
-Quindi modificare le chiamate client per usare il proxy locale invece di chiamare direttamente Gemini.
+### File di Test
+
+È disponibile uno script di test per verificare la configurazione:
+
+```bash
+chmod +x test_gemini_setup.sh
+./test_gemini_setup.sh
+```
+
+Lo script verifica:
+- Presenza di config.php
+- Esclusione da Git
+- Validità della configurazione PHP
+- Assenza di chiavi hardcoded in config.js
+- Utilizzo corretto del proxy nei file HTML
+
+### Migrazione da Configurazione Precedente
+
+Se stai aggiornando da una versione precedente con chiavi hardcoded:
+
+1. ✅ Le chiavi hardcoded sono state rimosse da config.js
+2. ✅ Tutti i file HTML sono stati aggiornati per usare il proxy
+3. ✅ È stato creato config.php con la chiave API
+4. ✅ config.php è stato aggiunto a .gitignore
+
+Non sono necessarie azioni manuali - il sistema è già configurato in modo sicuro!
 
 ## Testing
 
