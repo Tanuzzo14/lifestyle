@@ -83,4 +83,34 @@ if ($response === false) {
 
 // Return the response with the appropriate HTTP code
 http_response_code($httpCode);
-echo $response;
+
+// If the response is an error (4xx or 5xx), wrap it in a consistent format
+if ($httpCode >= 400) {
+    // Try to parse the Gemini API error response
+    $geminiError = json_decode($response, true);
+    
+    // Build a user-friendly error message
+    $errorMessage = 'Gemini API error';
+    
+    // Extract error details from Gemini API response if available
+    if (isset($geminiError['error']['message'])) {
+        $errorMessage = $geminiError['error']['message'];
+    } elseif (isset($geminiError['error'])) {
+        $errorMessage = is_string($geminiError['error']) ? $geminiError['error'] : json_encode($geminiError['error']);
+    } elseif (isset($geminiError['message'])) {
+        $errorMessage = $geminiError['message'];
+    }
+    
+    // Add HTTP status code to the message
+    $errorMessage .= " (HTTP $httpCode)";
+    
+    // Return in consistent format
+    echo json_encode([
+        'error' => $errorMessage,
+        'statusCode' => $httpCode,
+        'details' => $geminiError
+    ]);
+} else {
+    // Success response - pass through as-is
+    echo $response;
+}
