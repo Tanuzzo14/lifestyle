@@ -80,10 +80,58 @@
         body.error-active #error-overlay {
             display: block;
         }
+        
+        /* Loading spinner */
+        #loading-spinner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        #loading-spinner.active {
+            display: flex;
+        }
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid #f3f4f6;
+            border-top: 5px solid #2563eb;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* View transitions */
+        #app {
+            transition: opacity 0.3s ease-in-out;
+        }
+        #app.transitioning {
+            opacity: 0;
+        }
+        
+        /* Disable interaction during loading */
+        body.loading-active {
+            pointer-events: none;
+        }
+        body.loading-active #loading-spinner {
+            pointer-events: auto;
+        }
     </style>
 </head>
 <body class="p-4 sm:p-6">
     <div id="error-overlay"></div>
+    <div id="loading-spinner">
+        <div class="spinner"></div>
+    </div>
     <div id="app" class="container mx-auto"></div>
 
     <script src="config.js"></script>
@@ -269,6 +317,7 @@ ${textContent}`;
           return;
         }
 
+        showSpinner();
         displayError('CREAZIONE PIANO DI ALLENAMENTO CON L\'IA IN CORSO...');
 
         try {
@@ -349,6 +398,8 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo con almeno 15
         } catch (error) {
           console.error('Error generating AI workout plan:', error);
           displayError('ERRORE NELLA CREAZIONE DEL PIANO DI ALLENAMENTO: ' + error.message.toUpperCase());
+        } finally {
+          hideSpinner();
         }
       }
 
@@ -359,6 +410,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo con almeno 15
           return;
         }
 
+        showSpinner();
         displayError('CREAZIONE PIANO NUTRIZIONALE CON L\'IA IN CORSO...');
 
         try {
@@ -446,6 +498,8 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
         } catch (error) {
           console.error('Error generating AI diet plan:', error);
           displayError('ERRORE NELLA CREAZIONE DEL PIANO NUTRIZIONALE: ' + error.message.toUpperCase());
+        } finally {
+          hideSpinner();
         }
       }
 
@@ -507,6 +561,23 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
           } catch (e) {
               console.error("Errore di decodifica Base64:", e);
               return "ERRORE: IMPOSSIBILE DECODIFICARE IL CONTENUTO TESTUALE.";
+          }
+      }
+      
+      // Loading spinner functions
+      function showSpinner() {
+          const spinner = document.getElementById('loading-spinner');
+          if (spinner) {
+              spinner.classList.add('active');
+              document.body.classList.add('loading-active');
+          }
+      }
+      
+      function hideSpinner() {
+          const spinner = document.getElementById('loading-spinner');
+          if (spinner) {
+              spinner.classList.remove('active');
+              document.body.classList.remove('loading-active');
           }
       }
 
@@ -783,7 +854,24 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
           }
         },
 
-        setView: function(newView) { state.view = newView; state.isMenuOpen = false; render(); },
+        setView: function(newView) { 
+            const appElement = document.getElementById('app');
+            if (appElement) {
+                appElement.classList.add('transitioning');
+                setTimeout(() => {
+                    state.view = newView; 
+                    state.isMenuOpen = false; 
+                    render();
+                    setTimeout(() => {
+                        appElement.classList.remove('transitioning');
+                    }, 10);
+                }, 300);
+            } else {
+                state.view = newView; 
+                state.isMenuOpen = false; 
+                render();
+            }
+        },
         toggleMenu: function() { state.isMenuOpen = !state.isMenuOpen; render(); },
 
         installPWA: async function() {
@@ -854,6 +942,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
           const file = event.target.files[0];
           if (!file) return;
           
+          showSpinner();
           displayError('CARICAMENTO FILE IN CORSO...');
           
           const reader = new FileReader();
@@ -901,9 +990,11 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
             } catch (error) {
               console.error('Error processing workout file:', error);
               displayError('ERRORE STANDARDIZZAZIONE: ' + error.message.toUpperCase());
+            } finally {
+              hideSpinner();
             }
           };
-          reader.onerror = function(){ displayError('ERRORE DURANTE LA LETTURA DEL FILE.'); };
+          reader.onerror = function(){ displayError('ERRORE DURANTE LA LETTURA DEL FILE.'); hideSpinner(); };
           
           // Read as text for text-based files, otherwise as data URL
           if (file.type === 'text/plain' || file.type === 'text/csv' || file.name.endsWith('.txt') || file.name.endsWith('.csv') || file.name.endsWith('.json')) {
@@ -929,6 +1020,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
 
         importWorkoutPlan: async function(textContent) {
           try {
+            showSpinner();
             displayError('IMPORTAZIONE IN CORSO...');
             let newWorkoutData = [];
             const content = textContent.trim();
@@ -1011,6 +1103,8 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
             displayError(`PIANO IMPORTATO (${newWorkoutData.length} righe).`);
           } catch (e) {
             displayError('ERRORE IMPORTAZIONE: ' + e.message.toUpperCase());
+          } finally {
+            hideSpinner();
           }
         },
 
@@ -1055,6 +1149,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
 
         importDietPlan: async function(textContent) {
           try {
+            showSpinner();
             displayError('IMPORTAZIONE PIANO DIETA IN CORSO...');
             let newPlanGrouped = [];
             const content = textContent.trim();
@@ -1100,6 +1195,8 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
             displayError(`PIANO DIETA IMPORTATO CON SUCCESSO (${newPlanGrouped.length} GIORNI).`);
           } catch (e) {
             displayError('ERRORE IMPORTAZIONE DIETA: ' + e.message.toUpperCase());
+          } finally {
+            hideSpinner();
           }
         },
 
@@ -1161,6 +1258,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
           const file = event.target.files[0];
           if (!file) return;
           
+          showSpinner();
           displayError('CARICAMENTO FILE DIETA IN CORSO...');
           
           const reader = new FileReader();
@@ -1199,9 +1297,11 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
             } catch (error) {
               console.error('Error processing diet file:', error);
               displayError('ERRORE STANDARDIZZAZIONE DIETA: ' + error.message.toUpperCase());
+            } finally {
+              hideSpinner();
             }
           };
-          reader.onerror = function(){ displayError('ERRORE DURANTE LA LETTURA DEL FILE.'); };
+          reader.onerror = function(){ displayError('ERRORE DURANTE LA LETTURA DEL FILE.'); hideSpinner(); };
           
           // Read as text for text-based files, otherwise as data URL
           if (file.type === 'text/plain' || file.type === 'text/csv' || file.name.endsWith('.txt') || file.name.endsWith('.csv') || file.name.endsWith('.json')) {
