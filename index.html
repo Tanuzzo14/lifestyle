@@ -137,7 +137,7 @@ Convert any workout plan format (text, CSV, table, etc.) to this JSON format. Al
 Here is the workout plan to convert:
 ${textContent}`;
 
-          const response = await fetch(GEMINI_PROXY_URL, {
+          const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -196,7 +196,7 @@ Convert any diet plan format (text, CSV, table, etc.) to this JSON format. All t
 Here is the diet plan to convert:
 ${textContent}`;
 
-          const response = await fetch(GEMINI_PROXY_URL, {
+          const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -303,7 +303,7 @@ Rispondi SOLO con un array JSON in questo formato esatto:
 
 Tutti i testi devono essere in UPPERCASE. Genera un piano completo con almeno 15-20 esercizi divisi su più giorni.`;
 
-          const response = await fetch(GEMINI_PROXY_URL, {
+          const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -400,7 +400,7 @@ Rispondi SOLO con un array JSON in questo formato esatto:
 
 Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni con tutti i pasti.`;
 
-          const response = await fetch(GEMINI_PROXY_URL, {
+          const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
