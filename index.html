@@ -1027,6 +1027,8 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
             state.userType = result.userType;
             state.isAuthenticated = true;
             
+            await loadUserData();
+            
             if (userType === "pro") {
               redirectToProDashboard();
               return;
