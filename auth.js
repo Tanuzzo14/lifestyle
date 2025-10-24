@@ -1,447 +1,429 @@
-// Authentication Module for Lifestyle Designer
-// This module handles login, registration, and authentication logic
+// =============================================
+// AUTHENTICATION MODULE FOR LIFESTYLE DESIGNER
+// =============================================
+// Handles login, registration, and authentication logic
+// with consistent data structure and syncing system.
 
+// ---------------------------------------------
 // API Configuration
+// ---------------------------------------------
 const API_URL = 'api.php';
 
-// API call to server using data.json
+// Generic API call helper
 async function apiCall(method, params = {}) {
-  try {
-    const options = {
-      method: method,
-      headers: { 'Content-Type': 'application/json' }
-    };
-    
-    if (method === 'GET') {
-      const query = new URLSearchParams(params).toString();
-      const response = await fetch(`${API_URL}?${query}`, options);
-      const result = await response.json();
-      return result;
-    } else {
-      options.body = JSON.stringify(params);
-      const response = await fetch(API_URL, options);
-      const result = await response.json();
-      return result;
+    try {
+        const options = {
+            method: method,
+            headers: { 'Content-Type': 'application/json' }
+        };
+
+        if (method === 'GET') {
+            const query = new URLSearchParams(params).toString();
+            const response = await fetch(`${API_URL}?${query}`, options);
+            const result = await response.json();
+            return result;
+        } else {
+            options.body = JSON.stringify(params);
+            const response = await fetch(API_URL, options);
+            const result = await response.json();
+            return result;
+        }
+    } catch (error) {
+        console.error('Errore API:', error);
+        return { success: false, error: error.message };
     }
-  } catch (error) {
-    console.error('Errore API:', error);
-    return { success: false, error: error.message };
-  }
 }
 
+// ---------------------------------------------
 // Simple hash function
+// ---------------------------------------------
 function simpleHash(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return hash;
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return hash;
 }
 
-// Save user data to localStorage as fallback
-function saveToLocalStorage(userId, userData) {
-  try {
-    const localStorageUsers = localStorage.getItem('localStorageUsers');
-    const users = localStorageUsers ? JSON.parse(localStorageUsers) : {};
-    users[userId] = userData;
-    localStorage.setItem('localStorageUsers', JSON.stringify(users));
-    return true;
-  } catch (error) {
-    console.error('Failed to save to localStorage:', error);
-    return false;
-  }
-}
+// ---------------------------------------------
+// Normalize user data to maintain consistent structure
+// ---------------------------------------------
+function normalizeUserData(uid, userData, createdBy = null) {
+    const now = new Date().toISOString();
 
-// Get user data from localStorage
-function getFromLocalStorage(userId) {
-  try {
-    const localStorageUsers = localStorage.getItem('localStorageUsers');
-    if (!localStorageUsers) {
-      return null;
-    }
-    const users = JSON.parse(localStorageUsers);
-    return users[userId] || null;
-  } catch (error) {
-    console.error('Failed to read from localStorage:', error);
-    return null;
-  }
-}
-
-// Sync localStorage user data to data.json when possible
-async function syncLocalStorageToDataJson() {
-  try {
-    const localStorageUsers = localStorage.getItem('localStorageUsers');
-    if (!localStorageUsers) {
-      return; // No pending data to sync
-    }
-
-    const users = JSON.parse(localStorageUsers);
-    let syncedCount = 0;
-    let failedCount = 0;
-
-    for (const [userId, userData] of Object.entries(users)) {
-      try {
-        const result = await apiCall('POST', { userId: userId, data: userData });
-        if (result.success) {
-          syncedCount++;
-          // Remove from localStorage after successful sync
-          delete users[userId];
-        } else {
-          failedCount++;
-        }
-      } catch (err) {
-        console.error(`Failed to sync user ${userId}:`, err);
-        failedCount++;
-      }
-    }
-
-    // Update localStorage with remaining unsync'd users
-    if (Object.keys(users).length === 0) {
-      localStorage.removeItem('localStorageUsers');
-    } else {
-      localStorage.setItem('localStorageUsers', JSON.stringify(users));
-    }
-
-    if (syncedCount > 0) {
-      console.log(`Synced ${syncedCount} users from localStorage to data.json`);
-    }
-  } catch (error) {
-    console.error('Error during localStorage sync:', error);
-  }
-}
-
-// Authentication Module
-export const Auth = {
-  /**
-   * Login with username and password
-   * @param {string} username - User's username
-   * @param {string} password - User's password
-   * @param {Function} displayError - Callback function to display errors
-   * @returns {Promise<Object|null>} User object if successful, null otherwise
-   */
-  login: async function(username, password, displayError) {
-    try {
-      const userKey = username.toLowerCase();
-      const hashBasedUid = simpleHash(userKey).toString();
-      
-      let userData = null;
-      let actualUid = null;
-      let fromLocalStorage = false;
-      
-      // Try to get user data from data.json first using hash-based UID
-      try {
-        const result = await apiCall('GET', { userId: hashBasedUid });
-        if (result.success && result.data) {
-          userData = result.data;
-          actualUid = hashBasedUid;
-        }
-      } catch (err) {
-        console.error("Failed to read from data.json:", err);
-      }
-      
-      // If not found by hash-based UID, search all users by username (for trainer-created users)
-      if (!userData) {
-        try {
-          const allDataResult = await apiCall('GET', {});
-          if (allDataResult.success && allDataResult.data) {
-            const allData = allDataResult.data;
-            // Search for user with matching displayUsername
-            for (const [uid, data] of Object.entries(allData)) {
-              if (data && data.displayUsername && data.displayUsername.toLowerCase() === userKey) {
-                userData = data;
-                actualUid = uid;
-                break;
-              }
-            }
-          }
-        } catch (err) {
-          console.error("Failed to search all users:", err);
-        }
-      }
-      
-      // If still not found in data.json, try localStorage
-      if (!userData) {
-        userData = getFromLocalStorage(hashBasedUid);
-        if (userData) {
-          actualUid = hashBasedUid;
-          fromLocalStorage = true;
-          console.log('User data loaded from localStorage fallback');
-        }
-      }
-      
-      if (userData && actualUid) {
-        // Verify password (simple hash comparison)
-        const storedPasswordHash = userData.passwordHash || '';
-        const inputPasswordHash = simpleHash(password).toString();
-        
-        // If no password hash exists, use username as default password
-        // This handles users created by trainers without explicit passwords
-        const defaultPasswordHash = simpleHash(userKey).toString();
-        const isPasswordValid = storedPasswordHash === inputPasswordHash || 
-                                (!storedPasswordHash && inputPasswordHash === defaultPasswordHash);
-        
-        if (isPasswordValid) {
-          const user = {
-            username: userKey.toUpperCase(),
-            uid: actualUid,
-            userType: userData.userType || 'user',
-            userData: userData
-          };
-          
-          // Save to localStorage
-          localStorage.setItem('currentUser', JSON.stringify({
-            uid: actualUid,
-            username: user.username,
-            userType: user.userType
-          }));
-          
-          // If data was from localStorage, try to sync it to data.json
-          if (fromLocalStorage) {
-            try {
-              const syncResult = await apiCall('POST', { userId: actualUid, data: userData });
-              if (syncResult.success) {
-                console.log('Successfully synced localStorage data to data.json');
-                // Remove from localStorage after successful sync
-                const localStorageUsers = localStorage.getItem('localStorageUsers');
-                if (localStorageUsers) {
-                  const users = JSON.parse(localStorageUsers);
-                  delete users[actualUid];
-                  if (Object.keys(users).length === 0) {
-                    localStorage.removeItem('localStorageUsers');
-                  } else {
-                    localStorage.setItem('localStorageUsers', JSON.stringify(users));
-                  }
-                }
-              }
-            } catch (syncErr) {
-              console.error('Failed to sync to data.json during login:', syncErr);
-            }
-          }
-          
-          return user;
-        } else {
-          displayError('NOME UTENTE O PASSWORD NON VALIDI.');
-          return null;
-        }
-      } else {
-        displayError('NOME UTENTE O PASSWORD NON VALIDI.');
-        return null;
-      }
-    } catch (err) {
-      console.error("Login error:", err);
-      displayError('NOME UTENTE O PASSWORD NON VALIDI.');
-      return null;
-    }
-  },
-
-  /**
-   * Register a new user
-   * @param {string} username - Desired username
-   * @param {string} password - Desired password
-   * @param {string} userType - User type: "user" or "pro"
-   * @param {Function} displayError - Callback function to display errors/messages
-   * @returns {Promise<Object|null>} User object if successful, null otherwise
-   */
-  register: async function(username, password, userType = "user", displayError) {
-    try {
-      const userKey = username.toLowerCase();
-      const uid = simpleHash(userKey).toString();
-      const passwordHash = simpleHash(password).toString();
-
-      // Check if user already exists in data.json or localStorage
-      let existingUser = null;
-      try {
-        const result = await apiCall('GET', { userId: uid });
-        if (result.success && result.data) {
-          existingUser = result.data;
-        }
-      } catch (err) {
-        console.error("Failed to check data.json:", err);
-      }
-      
-      if (!existingUser) {
-        existingUser = getFromLocalStorage(uid);
-      }
-      
-      if (existingUser) {
-        displayError('NOME UTENTE GIÀ IN USO. SCEGLI UN ALTRO NOME.');
-        return null;
-      }
-
-      const user = {
-        username: userKey.toUpperCase(),
+    return {
         uid: uid,
-        userType: userType
-      };
-
-      // For base users (not pro), handle BASE_USER trainer assignment
-      let baseUserUid = null;
-      if (userType === "user") {
-        // Get or create BASE_USER
-        const baseUserKey = "base_user";
-        baseUserUid = simpleHash(baseUserKey).toString();
-        
-        let baseUserData = null;
-        try {
-          const result = await apiCall('GET', { userId: baseUserUid });
-          if (result.success && result.data) {
-            baseUserData = result.data;
-          }
-        } catch (err) {
-          console.error("Failed to check for BASE_USER:", err);
-        }
-        
-        // Create BASE_USER if it doesn't exist
-        if (!baseUserData) {
-          const baseUserPasswordHash = simpleHash("base_user_password").toString();
-          baseUserData = {
-            uid: baseUserUid,
-            userType: "pro",
-            displayUsername: "BASE_USER",
-            passwordHash: baseUserPasswordHash,
-            clients: [],
-            data: {
-              habits: [],
-              workout: [],
-              uploadedWorkoutPlans: [],
-              diet: [],
-              dietPlan: { targetCalories: 2000, plan: [] },
-              uploadedDietPlans: [],
-              dailyCompliance: {},
-              measurementsLog: []
-            },
-            sleepStartTimestamp: null,
-            createdAt: new Date().toISOString()
-          };
-          
-          try {
-            await apiCall('POST', { userId: baseUserUid, data: baseUserData });
-            console.log('BASE_USER trainer created successfully');
-          } catch (err) {
-            console.error("Failed to create BASE_USER:", err);
-          }
-        }
-      }
-
-      // Save user data
-      const payload = {
-        uid: uid,
-        userType: userType, 
-        displayUsername: user.username,
-        passwordHash: passwordHash,
-        clients: [],
+        userType: userData.userType || 'user',
+        displayUsername: userData.displayUsername || '',
+        passwordHash: userData.passwordHash || '',
+        clients: userData.clients || [],
         data: {
-          habits: [],
-          workout: [],
-          uploadedWorkoutPlans: [],
-          diet: [],
-          dietPlan: { targetCalories: 2000, plan: [] },
-          uploadedDietPlans: [],
-          dailyCompliance: {},
-          measurementsLog: []
+            habits: userData.data?.habits || [],
+            workout: userData.data?.workout || [],
+            uploadedWorkoutPlans: userData.data?.uploadedWorkoutPlans || [],
+            diet: userData.data?.diet || [],
+            dietPlan: userData.data?.dietPlan || { targetCalories: 2000, plan: [] },
+            uploadedDietPlans: userData.data?.uploadedDietPlans || [],
+            dailyCompliance: userData.data?.dailyCompliance || [],
+            measurementsLog: userData.data?.measurementsLog || []
         },
-        sleepStartTimestamp: null,
-        createdAt: new Date().toISOString()
-      };
-      
-      // Add createdBy field for base users
-      if (userType === "user" && baseUserUid) {
-        payload.createdBy = baseUserUid;
-      }
-      
-      let savedToDataJson = false;
-      
-      // Try to save to data.json first
-      try {
-        const result = await apiCall('POST', { userId: uid, data: payload });
-        if (result.success) {
-          savedToDataJson = true;
-          console.log('User registered successfully to data.json');
-        }
-      } catch (err) {
-        console.error("Failed to save to data.json:", err);
-      }
-      
-      // If data.json save failed, save to localStorage
-      if (!savedToDataJson) {
-        const savedToLocalStorage = saveToLocalStorage(uid, payload);
-        if (savedToLocalStorage) {
-          console.log('User registered to localStorage (fallback)');
-          displayError('REGISTRAZIONE SALVATA LOCALMENTE. SARÀ SINCRONIZZATA QUANDO POSSIBILE.');
-        } else {
-          displayError('ERRORE DURANTE LA REGISTRAZIONE.');
-          return null;
-        }
-      }
-      
-      // Add new user to BASE_USER's clients list
-      if (userType === "user" && baseUserUid && savedToDataJson) {
-        try {
-          const baseUserResult = await apiCall('GET', { userId: baseUserUid });
-          if (baseUserResult.success && baseUserResult.data) {
-            const baseUserData = baseUserResult.data;
-            baseUserData.clients = baseUserData.clients || [];
-            
-            // Check if user is not already in clients list
-            if (!baseUserData.clients.find(c => c.uid === uid)) {
-              baseUserData.clients.push({ uid: uid, username: user.username });
-              await apiCall('POST', { userId: baseUserUid, data: baseUserData });
-              console.log('User added to BASE_USER clients list');
-            }
-          }
-        } catch (err) {
-          console.error("Failed to add user to BASE_USER clients:", err);
-        }
-      }
-      
-      // Save to localStorage for session
-      localStorage.setItem('currentUser', JSON.stringify({
-        uid: uid,
-        username: user.username,
-        userType: userType
-      }));
-      
-      return {
-        ...user,
-        savedToDataJson: savedToDataJson
-      };
-    } catch (err) {
-      console.error("Register error:", err);
-      displayError('ERRORE DURANTE LA REGISTRAZIONE.');
-      return null;
-    }
-  },
+        sleepStartTimestamp: userData.sleepStartTimestamp || null,
+        createdAt: userData.createdAt || now,
+        createdBy: userData.createdBy || createdBy || null,
+        updatedAt: now
+    };
+}
 
-  /**
-   * Logout the current user
-   */
-  logout: function() {
+// ---------------------------------------------
+// LocalStorage Helpers
+// ---------------------------------------------
+function saveToLocalStorage(userId, userData) {
     try {
-      localStorage.removeItem('currentUser');
-      return true;
-    } catch (err) {
-      console.error("Logout error:", err);
-      return false;
+        const localStorageUsers = localStorage.getItem('localStorageUsers');
+        const users = localStorageUsers ? JSON.parse(localStorageUsers) : {};
+        users[userId] = userData;
+        localStorage.setItem('localStorageUsers', JSON.stringify(users));
+        return true;
+    } catch (error) {
+        console.error('Failed to save to localStorage:', error);
+        return false;
     }
-  },
+}
 
-  /**
-   * Check if user is already authenticated
-   * @returns {Object|null} User object if authenticated, null otherwise
-   */
-  checkAuth: async function() {
-    // Always try to sync localStorage data to data.json on app start
-    await syncLocalStorageToDataJson();
-
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      const user = JSON.parse(savedUser);
-      return {
-        uid: user.uid,
-        username: user.username,
-        userType: user.userType || 'user'
-      };
+function getFromLocalStorage(userId) {
+    try {
+        const localStorageUsers = localStorage.getItem('localStorageUsers');
+        if (!localStorageUsers) return null;
+        const users = JSON.parse(localStorageUsers);
+        return users[userId] || null;
+    } catch (error) {
+        console.error('Failed to read from localStorage:', error);
+        return null;
     }
-    return null;
-  }
+}
+
+// ---------------------------------------------
+// Sync LocalStorage → data.json
+// ---------------------------------------------
+async function syncLocalStorageToDataJson() {
+    try {
+        const localStorageUsers = localStorage.getItem('localStorageUsers');
+        if (!localStorageUsers) return;
+
+        const users = JSON.parse(localStorageUsers);
+        let syncedCount = 0;
+        let failedCount = 0;
+
+        for (const [userId, userData] of Object.entries(users)) {
+            try {
+                const normalized = normalizeUserData(userId, userData, userData.createdBy);
+                const result = await apiCall('POST', { userId, data: normalized });
+                if (result.success) {
+                    syncedCount++;
+                    delete users[userId];
+                } else {
+                    failedCount++;
+                }
+            } catch (err) {
+                console.error(`Failed to sync user ${userId}:`, err);
+                failedCount++;
+            }
+        }
+
+        if (Object.keys(users).length === 0) {
+            localStorage.removeItem('localStorageUsers');
+        } else {
+            localStorage.setItem('localStorageUsers', JSON.stringify(users));
+        }
+
+        if (syncedCount > 0) {
+            console.log(`Synced ${syncedCount} users from localStorage to data.json`);
+        }
+    } catch (error) {
+        console.error('Error during localStorage sync:', error);
+    }
+}
+
+// ---------------------------------------------
+// AUTH MODULE
+// ---------------------------------------------
+export const Auth = {
+    // -------------------
+    // LOGIN
+    // -------------------
+    login: async function(username, password, displayError) {
+        try {
+            const userKey = username.toLowerCase();
+            const hashBasedUid = simpleHash(userKey).toString();
+
+            let userData = null;
+            let actualUid = null;
+            let fromLocalStorage = false;
+
+            // Try to fetch by hash UID
+            try {
+                const result = await apiCall('GET', { userId: hashBasedUid });
+                if (result.success && result.data) {
+                    userData = result.data;
+                    actualUid = hashBasedUid;
+                }
+            } catch (err) {
+                console.error("Failed to read from data.json:", err);
+            }
+
+            // Search by displayUsername if not found
+            if (!userData) {
+                try {
+                    const allResult = await apiCall('GET', {});
+                    if (allResult.success && allResult.data) {
+                        const allData = allResult.data;
+                        for (const [uid, data] of Object.entries(allData)) {
+                            if (data.displayUsername?.toLowerCase() === userKey) {
+                                userData = data;
+                                actualUid = uid;
+                                break;
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error("Failed to search all users:", err);
+                }
+            }
+
+            // Try localStorage fallback
+            if (!userData) {
+                userData = getFromLocalStorage(hashBasedUid);
+                if (userData) {
+                    actualUid = hashBasedUid;
+                    fromLocalStorage = true;
+                    console.log('User data loaded from localStorage fallback');
+                }
+            }
+
+            // Validate credentials
+            if (userData && actualUid) {
+                const storedPasswordHash = userData.passwordHash || '';
+                const inputPasswordHash = simpleHash(password).toString();
+                const defaultPasswordHash = simpleHash(userKey).toString();
+
+                const isValid =
+                    storedPasswordHash === inputPasswordHash ||
+                    (!storedPasswordHash && inputPasswordHash === defaultPasswordHash);
+
+                if (!isValid) {
+                    displayError('NOME UTENTE O PASSWORD NON VALIDI.');
+                    return null;
+                }
+
+                // Normalize before use
+                userData = normalizeUserData(actualUid, userData, userData.createdBy);
+
+                // Save session
+                localStorage.setItem(
+                    'currentUser',
+                    JSON.stringify({
+                        uid: actualUid,
+                        username: userKey.toUpperCase(),
+                        userType: userData.userType
+                    })
+                );
+
+                // Sync if loaded from localStorage
+                if (fromLocalStorage) {
+                    try {
+                        const normalized = normalizeUserData(actualUid, userData, userData.createdBy);
+                        const syncResult = await apiCall('POST', { userId: actualUid, data: normalized });
+                        if (syncResult.success) {
+                            console.log('Successfully synced localStorage data to data.json');
+                            const localStorageUsers = localStorage.getItem('localStorageUsers');
+                            if (localStorageUsers) {
+                                const users = JSON.parse(localStorageUsers);
+                                delete users[actualUid];
+                                if (Object.keys(users).length === 0)
+                                    localStorage.removeItem('localStorageUsers');
+                                else
+                                    localStorage.setItem('localStorageUsers', JSON.stringify(users));
+                            }
+                        }
+                    } catch (syncErr) {
+                        console.error('Failed to sync to data.json during login:', syncErr);
+                    }
+                }
+
+                return {
+                    username: userKey.toUpperCase(),
+                    uid: actualUid,
+                    userType: userData.userType,
+                    userData
+                };
+            }
+
+            displayError('NOME UTENTE O PASSWORD NON VALIDI.');
+            return null;
+        } catch (err) {
+            console.error("Login error:", err);
+            displayError('NOME UTENTE O PASSWORD NON VALIDI.');
+            return null;
+        }
+    },
+
+    // -------------------
+    // REGISTER
+    // -------------------
+    register: async function(username, password, userType = "user", displayError) {
+        try {
+            const userKey = username.toLowerCase();
+            const uid = simpleHash(userKey).toString();
+            const passwordHash = simpleHash(password).toString();
+
+            // Check if exists
+            let existingUser = null;
+            try {
+                const result = await apiCall('GET', { userId: uid });
+                if (result.success && result.data) existingUser = result.data;
+            } catch (err) {
+                console.error("Failed to check data.json:", err);
+            }
+
+            if (!existingUser) existingUser = getFromLocalStorage(uid);
+
+            if (existingUser) {
+                displayError('NOME UTENTE GIÀ IN USO. SCEGLI UN ALTRO NOME.');
+                return null;
+            }
+
+            const user = {
+                username: userKey.toUpperCase(),
+                uid,
+                userType
+            };
+
+            // BASE_USER trainer
+            let baseUserUid = null;
+            if (userType === "user") {
+                const baseKey = "base_user";
+                baseUserUid = simpleHash(baseKey).toString();
+
+                let baseUserData = null;
+                try {
+                    const baseRes = await apiCall('GET', { userId: baseUserUid });
+                    if (baseRes.success && baseRes.data) baseUserData = baseRes.data;
+                } catch {}
+
+                if (!baseUserData) {
+                    const baseUserPasswordHash = simpleHash("base_user_password").toString();
+                    baseUserData = normalizeUserData(baseUserUid, {
+                        userType: "pro",
+                        displayUsername: "BASE_USER",
+                        passwordHash: baseUserPasswordHash,
+                        clients: []
+                    });
+                    await apiCall('POST', { userId: baseUserUid, data: baseUserData });
+                    console.log('BASE_USER created');
+                }
+            }
+
+            // Create payload
+            const payload = normalizeUserData(uid, {
+                userType,
+                displayUsername: user.username,
+                passwordHash,
+                clients: [],
+                data: {
+                    habits: [],
+                    workout: [],
+                    uploadedWorkoutPlans: [],
+                    diet: [],
+                    dietPlan: { targetCalories: 2000, plan: [] },
+                    uploadedDietPlans: [],
+                    dailyCompliance: [],
+                    measurementsLog: []
+                },
+                createdBy: userType === "user" ? baseUserUid : null
+            });
+
+            // Save
+            let savedToDataJson = false;
+            try {
+                const result = await apiCall('POST', { userId: uid, data: payload });
+                if (result.success) {
+                    savedToDataJson = true;
+                    console.log('User registered successfully to data.json');
+                }
+            } catch {
+                console.error("Failed to save to data.json");
+            }
+
+            // Fallback localStorage
+            if (!savedToDataJson) {
+                if (saveToLocalStorage(uid, payload)) {
+                    console.log('User registered to localStorage (fallback)');
+                    displayError('REGISTRAZIONE SALVATA LOCALMENTE. SARÀ SINCRONIZZATA QUANDO POSSIBILE.');
+                } else {
+                    displayError('ERRORE DURANTE LA REGISTRAZIONE.');
+                    return null;
+                }
+            }
+
+            // Add to BASE_USER clients
+            if (userType === "user" && baseUserUid && savedToDataJson) {
+                try {
+                    const baseRes = await apiCall('GET', { userId: baseUserUid });
+                    if (baseRes.success && baseRes.data) {
+                        const baseData = baseRes.data;
+                        baseData.clients = baseData.clients || [];
+                        if (!baseData.clients.find(c => c.uid === uid)) {
+                            baseData.clients.push({ uid, username: user.username });
+                            await apiCall('POST', { userId: baseUserUid, data: baseData });
+                        }
+                    }
+                } catch (err) {
+                    console.error("Failed to add user to BASE_USER clients:", err);
+                }
+            }
+
+            // Save session
+            localStorage.setItem('currentUser', JSON.stringify({
+                uid,
+                username: user.username,
+                userType
+            }));
+
+            return { ...user, savedToDataJson };
+        } catch (err) {
+            console.error("Register error:", err);
+            displayError('ERRORE DURANTE LA REGISTRAZIONE.');
+            return null;
+        }
+    },
+
+    // -------------------
+    // LOGOUT
+    // -------------------
+    logout: function() {
+        try {
+            localStorage.removeItem('currentUser');
+            return true;
+        } catch (err) {
+            console.error("Logout error:", err);
+            return false;
+        }
+    },
+
+    // -------------------
+    // CHECK AUTH
+    // -------------------
+    checkAuth: async function() {
+        await syncLocalStorageToDataJson();
+        const savedUser = localStorage.getItem('currentUser');
+        if (savedUser) {
+            const user = JSON.parse(savedUser);
+            return {
+                uid: user.uid,
+                username: user.username,
+                userType: user.userType || 'user'
+            };
+        }
+        return null;
+    }
 };
