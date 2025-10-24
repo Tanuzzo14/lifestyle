@@ -295,6 +295,7 @@ export const Auth = {
         if (!baseUserData) {
           const baseUserPasswordHash = simpleHash("base_user_password").toString();
           baseUserData = {
+            uid: baseUserUid,
             userType: "pro",
             displayUsername: "BASE_USER",
             passwordHash: baseUserPasswordHash,
@@ -324,6 +325,7 @@ export const Auth = {
 
       // Save user data
       const payload = {
+        uid: uid,
         userType: userType, 
         displayUsername: user.username,
         passwordHash: passwordHash,
