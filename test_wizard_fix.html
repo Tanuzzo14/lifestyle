@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Wizard Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .info { color: blue; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Wizard Data Loss Fix</h1>
+    
+    <div class="test-section">
+        <h2>Test Instructions</h2>
+        <ol>
+            <li>Click "Run Automated Test" to simulate the registration and wizard flow</li>
+            <li>The test will check if uid, passwordHash, and createdBy are preserved</li>
+            <li>Check the results below</li>
+        </ol>
+        <button onclick="runTest()">Run Automated Test</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <div class="test-section" id="results">
+        <h2>Test Results</h2>
+        <div id="test-output">No test run yet. Click "Run Automated Test" to start.</div>
+    </div>
+
+    <script src="config.js"></script>
+    <script type="module">
+        import { Auth } from './auth.js';
+
+        const API_URL = 'api.php';
+
+        async function apiCall(method, params = {}) {
+            try {
+                const options = {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' }
+                };
+
+                if (method === 'GET') {
+                    const query = new URLSearchParams(params).toString();
+                    const response = await fetch(`${API_URL}?${query}`, options);
+                    const result = await response.json();
+                    return result;
+                } else {
+                    options.body = JSON.stringify(params);
+                    const response = await fetch(API_URL, options);
+                    const result = await response.json();
+                    return result;
+                }
+            } catch (error) {
+                console.error('API Error:', error);
+                return { success: false, error: error.message };
+            }
+        }
+
+        function simpleHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            return hash;
+        }
+
+        function log(message, type = 'info') {
+            const output = document.getElementById('test-output');
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            output.innerHTML += `<p class="${className}">${message}</p>`;
+        }
+
+        function logObject(obj, title) {
+            const output = document.getElementById('test-output');
+            output.innerHTML += `<p><strong>${title}:</strong></p><pre>${JSON.stringify(obj, null, 2)}</pre>`;
+        }
+
+        window.clearResults = function() {
+            document.getElementById('test-output').innerHTML = 'Results cleared. Click "Run Automated Test" to start.';
+        };
+
+        window.runTest = async function() {
+            document.getElementById('test-output').innerHTML = '<p class="info">Starting test...</p>';
+
+            try {
+                const testUsername = 'wizard_fix_test_' + Date.now();
+                const testPassword = 'testpass123';
+                
+                log(`Step 1: Registering test user "${testUsername}"...`);
+
+                // Register user
+                const registerResult = await Auth.register(testUsername, testPassword, 'user', 
+                    (msg) => log(msg, 'error'));
+
+                if (!registerResult) {
+                    log('Registration failed!', 'error');
+                    return;
+                }
+
+                log('✓ Registration successful', 'success');
+                log(`  UID: ${registerResult.uid}`);
+                log(`  Username: ${registerResult.username}`);
+
+                // Simulate loadUserData (this is what the fix adds)
+                log('\nStep 2: Loading user data (simulating loadUserData call)...');
+                
+                const userDataResult = await apiCall('GET', { userId: registerResult.uid });
+                
+                if (!userDataResult.success || !userDataResult.data) {
+                    log('Failed to load user data!', 'error');
+                    return;
+                }
+
+                const userData = userDataResult.data;
+                log('✓ User data loaded successfully', 'success');
+
+                // Check critical fields
+                log('\nStep 3: Verifying critical fields...');
+                
+                const checks = {
+                    'uid': userData.uid,
+                    'passwordHash': userData.passwordHash,
+                    'createdBy': userData.createdBy
+                };
+
+                let allFieldsPresent = true;
+                for (const [field, value] of Object.entries(checks)) {
+                    if (value) {
+                        log(`✓ ${field}: ${value}`, 'success');
+                    } else {
+                        log(`✗ ${field}: MISSING!`, 'error');
+                        allFieldsPresent = false;
+                    }
+                }
+
+                // Simulate wizard step - add measurements
+                log('\nStep 4: Simulating wizard step (adding measurements)...');
+                
+                userData.data = userData.data || {};
+                userData.data.measurementsLog = userData.data.measurementsLog || [];
+                userData.data.measurementsLog.push({
+                    id: Date.now(),
+                    date: new Date().toISOString().split('T')[0],
+                    raw: {
+                        weight: 75,
+                        height: 175,
+                        age: 30,
+                        gender: 'UOMO',
+                        waist: 80,
+                        hips: 95,
+                        chest: 100,
+                        bicep: 35,
+                        thigh: 55
+                    }
+                });
+                userData.updatedAt = new Date().toISOString();
+
+                // Save back (simulating saveAppState)
+                const saveResult = await apiCall('POST', { 
+                    userId: registerResult.uid, 
+                    data: userData 
+                });
+
+                if (!saveResult.success) {
+                    log('Failed to save data!', 'error');
+                    return;
+                }
+
+                log('✓ Data saved successfully', 'success');
+
+                // Verify fields are still present after save
+                log('\nStep 5: Re-loading data to verify fields are preserved...');
+                
+                const verifyResult = await apiCall('GET', { userId: registerResult.uid });
+                
+                if (!verifyResult.success || !verifyResult.data) {
+                    log('Failed to reload data!', 'error');
+                    return;
+                }
+
+                const verifiedData = verifyResult.data;
+
+                log('\nStep 6: Final verification...');
+                let finalCheck = true;
+
+                for (const [field, originalValue] of Object.entries(checks)) {
+                    const currentValue = verifiedData[field];
+                    if (currentValue === originalValue && currentValue) {
+                        log(`✓ ${field} preserved: ${currentValue}`, 'success');
+                    } else {
+                        log(`✗ ${field} LOST! Was: ${originalValue}, Now: ${currentValue}`, 'error');
+                        finalCheck = false;
+                    }
+                }
+
+                // Check measurements were saved
+                if (verifiedData.data.measurementsLog && verifiedData.data.measurementsLog.length > 0) {
+                    log(`✓ Measurements saved: ${verifiedData.data.measurementsLog.length} records`, 'success');
+                } else {
+                    log('✗ Measurements were not saved!', 'error');
+                    finalCheck = false;
+                }
+
+                // Final summary
+                log('\n' + '='.repeat(50));
+                if (allFieldsPresent && finalCheck) {
+                    log('✓ ALL TESTS PASSED!', 'success');
+                    log('The wizard data loss fix is working correctly.', 'success');
+                } else {
+                    log('✗ TESTS FAILED!', 'error');
+                    log('Some fields were lost during the wizard flow.', 'error');
+                }
+                log('='.repeat(50));
+
+                logObject(verifiedData, 'Final User Data');
+
+            } catch (error) {
+                log(`\nTest Error: ${error.message}`, 'error');
+                console.error('Test error:', error);
+            }
+        };
+    </script>
+</body>
+</html>
