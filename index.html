@@ -294,7 +294,7 @@ ${textContent}`;
       function isBaseUserClient() {
         if (!state.createdBy) return false;
         // BASE_USER uid is the hash of "base_user"
-        const baseUserKey = "base_user";
+        const baseUserKey = "BASE_USER";
         let hash = 0;
         for (let i = 0; i < baseUserKey.length; i++) {
           hash = baseUserKey.charCodeAt(i) + ((hash << 5) - hash);
