@@ -1684,87 +1684,157 @@ const proApp = {
     await this.loadClientsData();
     this.render();
   },
-  
-  async migrateUserFromFile(file) {
-    try {
-      // Read file content
-      const textContent = await this.readFileAsText(file);
-      
-      // Extract user data using Gemini
-      const userData = await this.extractUserDataWithGemini(textContent, file.name);
-      
-      if (!userData || !userData.username) {
-        return {
-          filename: file.name,
-          success: false,
-          message: 'Nessun dato utente valido trovato nel file.'
-        };
-      }
-      
-      // Generate unique username with underscores if needed
-      const finalUsername = await this.generateUniqueUsername(userData.username);
-      
-      if (!finalUsername) {
-        return {
-          filename: file.name,
-          success: false,
-          message: `Username ${userData.username} non disponibile (limite _ raggiunto).`
-        };
-      }
-      
-      // Create user with password 123456
-      const defaultPassword = '123456';
-      const passwordHash = simpleHash(defaultPassword).toString();
-      const userKey = finalUsername.toLowerCase();
-      const clientId = 'client_' + Date.now() + '_' + Math.floor(Math.random()*10000);
-      
-      // Prepare user data
-      const newUserData = {
-        userType: "user",
-        displayUsername: finalUsername.toUpperCase(),
-        passwordHash: passwordHash,
-        uid: clientId,
-        data: {
-          habits: [],
-          workout: userData.workout || [],
-          uploadedWorkoutPlans: [],
-          diet: [],
-          dietPlan: userData.dietPlan || { targetCalories: 2000, plan: [] },
-          uploadedDietPlans: [],
-          dailyCompliance: {},
-          measurementsLog: userData.measurements ? [userData.measurements] : []
-        },
-        sleepStartTimestamp: null,
-        createdBy: this.user.uid,
-        createdAt: new Date().toISOString()
-      };
-      
-      // Save user to data.json
-      await apiCall('POST', { userId: clientId, data: newUserData });
-      
-      // Add to professional's client list
-      this.data.clients = this.data.clients || [];
-      this.data.clients.push({ uid: clientId, username: finalUsername.toUpperCase() });
-      await apiCall('POST', { userId: this.user.uid, data: this.data });
-      
-      return {
-        filename: file.name,
-        success: true,
-        message: 'Utente creato con successo!',
-        username: finalUsername.toUpperCase()
-      };
-      
-    } catch (error) {
-      console.error('Error in migrateUserFromFile:', error);
-      return {
-        filename: file.name,
-        success: false,
-        message: `Errore durante la migrazione: ${error.message}`
-      };
-    }
-  },
-  
-  async readFileAsText(file) {
+
+    async migrateUserFromFile(file) {
+        try {
+            // 🔹 Mappa dei formati accettati e tipo di parser
+            const acceptedFormats = {
+                '.pdf': 'pdf',
+                '.docx': 'office',
+                '.doc': 'office',
+                '.xls': 'office',
+                '.xlsx': 'office',
+                '.txt': 'txt'
+            };
+
+            const fileName = file.name;
+            const lastDotIndex = fileName.lastIndexOf('.');
+            if (lastDotIndex === -1) {
+                throw new Error('Formato file non supportato: il file non ha estensione.');
+            }
+
+            const fileExtension = fileName.substring(lastDotIndex).toLowerCase();
+            const parserType = acceptedFormats[fileExtension];
+            if (!parserType) {
+                throw new Error(`Formato file non supportato: ${fileExtension}`);
+            }
+
+            // 🔹 Lettura del contenuto testuale dal file (in base al tipo)
+            let textContent = '';
+            try {
+                if (parserType === 'txt') {
+                    textContent = await this.readFileAsText(file);
+                } else if (parserType === 'pdf') {
+                    textContent = await this.extractTextFromPdf(file);
+                } else if (parserType === 'office') {
+                    textContent = await this.extractTextFromOffice(file);
+                } else {
+                    throw new Error('Tipo di parser non riconosciuto.');
+                }
+            } catch (parseErr) {
+                throw new Error(`Errore durante l'estrazione del testo dal file: ${parseErr.message}`);
+            }
+
+            // 🔹 Estrazione dei dati utente dal testo
+            const userData = await this.extractUserDataWithGemini(textContent, file.name);
+
+            if (!userData || !userData.username) {
+                return {
+                    filename: file.name,
+                    success: false,
+                    message: 'Nessun dato utente valido trovato nel file.'
+                };
+            }
+
+            // 🔹 Genera username univoco
+            const finalUsername = await this.generateUniqueUsername(userData.username);
+            if (!finalUsername) {
+                return {
+                    filename: file.name,
+                    success: false,
+                    message: `Username ${userData.username} non disponibile (limite _ raggiunto).`
+                };
+            }
+
+            // 🔹 Crea utente con password di default
+            const defaultPassword = '123456';
+            const passwordHash = simpleHash(defaultPassword).toString();
+            const userKey = finalUsername.toLowerCase();
+            const clientId = 'client_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+
+            const newUserData = {
+                userType: "user",
+                displayUsername: finalUsername.toUpperCase(),
+                passwordHash: passwordHash,
+                uid: clientId,
+                data: {
+                    habits: [],
+                    workout: userData.workout || [],
+                    uploadedWorkoutPlans: [],
+                    diet: [],
+                    dietPlan: userData.dietPlan || { targetCalories: 2000, plan: [] },
+                    uploadedDietPlans: [],
+                    dailyCompliance: {},
+                    measurementsLog: userData.measurements ? [userData.measurements] : []
+                },
+                sleepStartTimestamp: null,
+                createdBy: this.user.uid,
+                createdAt: new Date().toISOString()
+            };
+
+            // 🔹 Salva utente e aggiorna lista clienti
+            await apiCall('POST', { userId: clientId, data: newUserData });
+            this.data.clients = this.data.clients || [];
+            this.data.clients.push({ uid: clientId, username: finalUsername.toUpperCase() });
+            await apiCall('POST', { userId: this.user.uid, data: this.data });
+
+            return {
+                filename: file.name,
+                success: true,
+                message: 'Utente creato con successo!',
+                username: finalUsername.toUpperCase()
+            };
+
+        } catch (error) {
+            console.error('Error in migrateUserFromFile:', error);
+            return {
+                filename: file.name,
+                success: false,
+                message: `Errore durante la migrazione: ${error.message}`
+            };
+        }
+    },
+
+    // 🔹 Lettura come ArrayBuffer (utile per PDF)
+    async readFileAsArrayBuffer(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+        });
+    },
+
+// 🔹 Estrazione testo da PDF
+    async extractTextFromPdf(file) {
+        const pdfjsLib = await import('pdfjs-dist/build/pdf');
+        const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
+        const data = await this.readFileAsArrayBuffer(file);
+        const pdf = await pdfjsLib.getDocument({ data }).promise;
+
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            fullText += textContent.items.map(item => item.str).join(' ') + '\n';
+        }
+        return fullText.trim();
+    },
+
+// 🔹 Estrazione testo da file Office (DOCX, XLSX, ecc.)
+    async extractTextFromOffice(file) {
+        // Usa libreria tesseract o mammoth.js nel browser
+        // oppure invia al backend per l'estrazione lato server
+        const { default: mammoth } = await import('mammoth');
+        const arrayBuffer = await this.readFileAsArrayBuffer(file);
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        return result.value || '';
+    },
+
+
+    async readFileAsText(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       
