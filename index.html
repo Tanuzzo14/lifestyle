@@ -1082,8 +1082,6 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
         installPWA: async function() {
           const result = await Auth.installPWA();
           displayError(result.message);
-          // Update state for UI consistency
-          state.deferredPrompt = Auth._deferredPrompt;
           render();
         },
 

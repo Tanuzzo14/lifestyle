@@ -145,6 +145,12 @@ async function syncLocalStorageToDataJson() {
 }
 
 // ---------------------------------------------
+// PWA INSTALL (Private State)
+// ---------------------------------------------
+let deferredPrompt = null;
+let isListenerSetup = false;
+
+// ---------------------------------------------
 // AUTH MODULE
 // ---------------------------------------------
 export const Auth = {
@@ -430,26 +436,28 @@ export const Auth = {
     // -------------------
     // PWA INSTALL
     // -------------------
-    // Store the deferred prompt event
-    _deferredPrompt: null,
-
     // Setup PWA install prompt listener
     setupPWAInstallPrompt: function(callback) {
+        if (isListenerSetup) {
+            console.warn('PWA install prompt listener already setup');
+            return;
+        }
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
-            Auth._deferredPrompt = e;
+            deferredPrompt = e;
             if (callback) callback(e);
         });
+        isListenerSetup = true;
     },
 
     // Check if PWA install is available
     isPWAInstallAvailable: function() {
-        return Auth._deferredPrompt !== null;
+        return deferredPrompt !== null;
     },
 
     // Install PWA
     installPWA: async function() {
-        if (!Auth._deferredPrompt) {
+        if (!deferredPrompt) {
             return {
                 success: false,
                 message: 'IL BROWSER NON SUPPORTA L\'INSTALLAZIONE DIRETTA O L\'APP È GIÀ INSTALLATA.'
@@ -457,9 +465,9 @@ export const Auth = {
         }
 
         try {
-            Auth._deferredPrompt.prompt();
-            const { outcome } = await Auth._deferredPrompt.userChoice;
-            Auth._deferredPrompt = null;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            deferredPrompt = null;
 
             if (outcome === 'accepted') {
                 return {
