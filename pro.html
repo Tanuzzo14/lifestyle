@@ -1810,7 +1810,10 @@ const proApp = {
     try {
       const prompt = `You are a helpful assistant that extracts user data from files for migration purposes.
 
-Extract the following information from the text and return it as a JSON object:
+Extract the following information from the text and return it as a JSON object.
+
+**IMPORTANT RULE ON DATA INTERPRETATION:** The data for measurements, workout, and diet plan may not always be written in a consistent, standard format. **Do not look for specific, fixed strings or keywords.** Instead, **intelligently infer** the nature and value of the data based on context and common-sense interpretation of terms (e.g., "peso," "altezza," "squat," "colazione," "prot" could mean "weight," "height," "squat," "breakfast," "protein" respectively).
+
 - username: string (the person's name, e.g., "MARIO_ROSSI". If not found, use "USER" followed by a random number)
 - measurements: object with fields (if available):
   - id: number (use current timestamp)
@@ -1852,7 +1855,7 @@ Extract the following information from the text and return it as a JSON object:
 Important rules:
 1. All text values must be in UPPERCASE
 2. If data is not found, omit that field from the JSON (don't include null or empty values)
-3. Return ONLY the JSON object, no other text
+3. Return **ONLY** the JSON object, no other text
 4. If you cannot extract any meaningful data, return: {"username": "USER_${Date.now()}"}
 
 Here is the content from file "${filename}":
