@@ -726,6 +726,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
         createdBy: null,     // trainer who created this user (for BASE_USER tracking)
         isMenuOpen: false,
         deferredPrompt: null,
+        showChangePasswordModal: false,
         data: {
             habits: [],
             workout: [],
@@ -747,6 +748,13 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
 
       // ---------- UTILS ----------
       function getTodayDateString() { return new Date().toISOString().split('T')[0]; }
+      function simpleHash(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+          hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return hash;
+      }
       function displayError(message) {
           state.error = message;
           document.body.classList.add('error-active');
@@ -1056,6 +1064,63 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
           } catch (err) {
             console.error("Logout error:", err);
             displayError('ERRORE DURANTE LOGOUT.');
+          }
+        },
+
+        openChangePasswordModal: function() {
+          state.showChangePasswordModal = true;
+          render();
+        },
+
+        closeChangePasswordModal: function() {
+          state.showChangePasswordModal = false;
+          render();
+        },
+
+        changePassword: async function(currentPassword, newPassword, confirmPassword) {
+          // Validate inputs
+          if (!currentPassword || !newPassword || !confirmPassword) {
+            return displayError('TUTTI I CAMPI SONO OBBLIGATORI.');
+          }
+
+          if (newPassword !== confirmPassword) {
+            return displayError('LE NUOVE PASSWORD NON CORRISPONDONO.');
+          }
+
+          if (newPassword.length < 6) {
+            return displayError('LA NUOVA PASSWORD DEVE CONTENERE ALMENO 6 CARATTERI.');
+          }
+
+          try {
+            // Verify current password
+            const currentPasswordHash = simpleHash(currentPassword).toString();
+            if (state.passwordHash && state.passwordHash !== currentPasswordHash) {
+              return displayError('PASSWORD ATTUALE NON CORRETTA.');
+            }
+
+            // Hash new password
+            const newPasswordHash = simpleHash(newPassword).toString();
+
+            // Update password in local state
+            state.passwordHash = newPasswordHash;
+
+            // Update password in backend
+            const result = await apiCall('GET', { userId: state.uid });
+            if (!result.success || !result.data) {
+              return displayError('ERRORE NEL CARICAMENTO DEI DATI UTENTE.');
+            }
+
+            const userData = result.data;
+            userData.passwordHash = newPasswordHash;
+
+            await apiCall('POST', { userId: state.uid, data: userData });
+
+            displayError('PASSWORD CAMBIATA CON SUCCESSO!');
+            state.showChangePasswordModal = false;
+            render();
+          } catch (err) {
+            console.error('Errore cambio password:', err);
+            displayError('ERRORE DURANTE IL CAMBIO PASSWORD.');
           }
         },
 
@@ -1685,7 +1750,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
         if (!state.isAuthenticated) return '';
         const views = { summary: 'RIEPILOGO', habits: 'ABITUDINI', workout: 'ALLENAMENTO', diet: 'DIETA', measurements: 'MISURE' };
         const navLinks = Object.keys(views).map(viewKey => `<button onclick="window.app.setView('${viewKey}')" class="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg transition ${state.view === viewKey ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}">${views[viewKey]}</button>`).join('');
-        return `<nav class="p-4 bg-white shadow-xl rounded-xl mb-6"><div class="flex justify-between items-center"><span class="text-xl font-bold text-blue-600">LIFEGROWTH</span><button onclick="window.app.toggleMenu()" class="md:hidden p-2 rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none">${state.isMenuOpen ? '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>' : '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>'}</button><div class="hidden md:flex items-center space-x-2">${navLinks}<button onclick="window.app.logout()" class="px-3 py-2 text-sm font-semibold text-red-600 hover:text-red-800 transition">LOGOUT</button></div></div><div id="mobile-menu" class="${state.isMenuOpen ? 'block' : 'hidden'} md:hidden mt-4 pt-4 border-t space-y-2">${navLinks}<button onclick="window.app.logout()" class="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg text-red-600 hover:bg-red-50 transition">LOGOUT</button></div></nav>`;
+        return `<nav class="p-4 bg-white shadow-xl rounded-xl mb-6"><div class="flex justify-between items-center"><span class="text-xl font-bold text-blue-600">LIFEGROWTH</span><button onclick="window.app.toggleMenu()" class="md:hidden p-2 rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none">${state.isMenuOpen ? '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>' : '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>'}</button><div class="hidden md:flex items-center space-x-2">${navLinks}<button onclick="window.app.openChangePasswordModal()" class="px-3 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition">CAMBIA PASSWORD</button><button onclick="window.app.logout()" class="px-3 py-2 text-sm font-semibold text-red-600 hover:text-red-800 transition">LOGOUT</button></div></div><div id="mobile-menu" class="${state.isMenuOpen ? 'block' : 'hidden'} md:hidden mt-4 pt-4 border-t space-y-2">${navLinks}<button onclick="window.app.openChangePasswordModal()" class="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg text-gray-600 hover:bg-gray-50 transition">CAMBIA PASSWORD</button><button onclick="window.app.logout()" class="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg text-red-600 hover:bg-red-50 transition">LOGOUT</button></div></nav>`;
       }
 
       function renderLogin() {
@@ -2303,7 +2368,38 @@ function renderRegister() {
         }
 
         const errorBanner = state.error ? `<div class="mb-4 p-2 text-sm rounded bg-red-100 text-red-700">ATTENZIONE: ${state.error}</div>` : '';
-        return `${nav}${errorBanner}${content}`;
+        const passwordModal = renderChangePasswordModal();
+        return `${nav}${errorBanner}${content}${passwordModal}`;
+      }
+
+      function renderChangePasswordModal() {
+        if (!state.showChangePasswordModal) return '';
+        
+        return `<div class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4" onclick="window.app.closeChangePasswordModal()">
+          <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md" onclick="event.stopPropagation()">
+            <h3 class="text-2xl font-bold mb-5 text-center">CAMBIA PASSWORD</h3>
+            <form onsubmit="event.preventDefault(); window.app.changePassword(this.currentPassword.value, this.newPassword.value, this.confirmPassword.value); this.reset();">
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">PASSWORD ATTUALE</label>
+                  <input name="currentPassword" type="password" required class="w-full p-3 border rounded-lg">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">NUOVA PASSWORD</label>
+                  <input name="newPassword" type="password" required minlength="6" class="w-full p-3 border rounded-lg">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">CONFERMA NUOVA PASSWORD</label>
+                  <input name="confirmPassword" type="password" required minlength="6" class="w-full p-3 border rounded-lg">
+                </div>
+              </div>
+              <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="window.app.closeChangePasswordModal()" class="bg-gray-200 px-5 py-2 rounded-lg hover:bg-gray-300">Annulla</button>
+                <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700">Cambia Password</button>
+              </div>
+            </form>
+          </div>
+        </div>`;
       }
 
       function render() {
