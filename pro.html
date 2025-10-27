@@ -13,6 +13,31 @@
     .client-card { transition: transform 0.2s, box-shadow 0.2s; }
     .client-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); }
     .tab-button.active { border-bottom: 3px solid #4f46e5; color: #4f46e5; font-weight: 600; }
+    .main-tab-button.active { border-bottom: 3px solid #4f46e5; color: #4f46e5; font-weight: 600; }
+    
+    /* Drag and drop styles */
+    .drop-zone {
+      border: 3px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 3rem;
+      text-align: center;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+    .drop-zone:hover {
+      border-color: #6366f1;
+      background-color: #f8fafc;
+    }
+    .drop-zone.dragover {
+      border-color: #4f46e5;
+      background-color: #eef2ff;
+    }
+    .file-item {
+      transition: all 0.2s;
+    }
+    .file-item:hover {
+      background-color: #f8fafc;
+    }
     /* Disable inputs when error modal is shown */
     body.error-active input,
     body.error-active textarea,
@@ -277,8 +302,11 @@ const proApp = {
   clientsData: {},
   editingClient: null,
   currentClientView: 'workout', // Nuova variabile per la scheda del modale
+  currentMainView: 'clients', // Nuova variabile per la scheda principale
   editingWorkoutId: null, // Per tracciare quale esercizio è in modifica
   editingDietMeal: null, // Per tracciare quale pasto è in modifica (formato: {dayIndex, mealIndex})
+  migrationFiles: [], // Files for migration
+  migrationResults: [], // Results of migration
 
   showError(message) {
     const loading = document.getElementById('loading-indicator');
@@ -426,11 +454,14 @@ const proApp = {
       </div>
     </div>
     
-    <div id="client-list-container" class="bg-white shadow-xl rounded-xl">
-      <div class="p-6 border-b border-gray-100">
-          <h2 class="text-2xl font-semibold text-gray-800">Elenco Utenti</h2>
+    <div class="mb-8">
+      <div class="flex border-b border-gray-200 bg-white rounded-t-xl shadow">
+        <button onclick="proApp.setMainView('clients')" class="main-tab-button px-6 py-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentMainView === 'clients' ? 'active' : ''}">Elenco Utenti</button>
+        <button onclick="proApp.setMainView('migration')" class="main-tab-button px-6 py-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentMainView === 'migration' ? 'active' : ''}">Migrazione</button>
       </div>
-      ${this.renderClientList()}
+      <div id="main-content" class="bg-white shadow-xl rounded-b-xl">
+        ${this.renderMainContent()}
+      </div>
     </div>
     ${this.renderAddClientModal()}
     ${this.renderEditClientModal()}
@@ -457,6 +488,112 @@ const proApp = {
             </div>
           </div>`;
       }).join('')}
+    </div>`;
+  },
+
+  renderMainContent() {
+    switch(this.currentMainView) {
+      case 'clients':
+        return `<div class="p-6 border-b border-gray-100">
+            <h2 class="text-2xl font-semibold text-gray-800">Elenco Utenti</h2>
+        </div>
+        ${this.renderClientList()}`;
+      case 'migration':
+        return this.renderMigrationView();
+      default:
+        return '<p class="p-6 text-gray-500">Seleziona una scheda.</p>';
+    }
+  },
+
+  setMainView(view) {
+    this.currentMainView = view;
+    this.render();
+  },
+
+  renderMigrationView() {
+    return `<div class="p-6">
+      <h2 class="text-2xl font-semibold text-gray-800 mb-4">Migrazione Utenti</h2>
+      <p class="text-sm text-gray-600 mb-6">Carica uno o più file (PDF, DOCX, XLS, XLSX, DOC, TXT) contenenti i dati degli utenti. Il sistema utilizzerà Gemini per estrarre automaticamente i dati e creare gli account.</p>
+      
+      <div id="drop-zone" class="drop-zone mb-6" 
+           ondrop="proApp.handleDrop(event)" 
+           ondragover="proApp.handleDragOver(event)" 
+           ondragleave="proApp.handleDragLeave(event)"
+           onclick="document.getElementById('file-input-migration').click()">
+        <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+          <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <p class="mt-2 text-sm text-gray-600">
+          <span class="font-semibold text-indigo-600">Clicca per selezionare</span> o trascina i file qui
+        </p>
+        <p class="mt-1 text-xs text-gray-500">PDF, DOCX, XLS, XLSX, DOC, TXT</p>
+      </div>
+      <input type="file" id="file-input-migration" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" class="hidden" onchange="proApp.handleFileSelect(event)">
+      
+      ${this.migrationFiles.length > 0 ? `
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold mb-3">File Selezionati (${this.migrationFiles.length})</h3>
+          <div class="space-y-2">
+            ${this.migrationFiles.map((file, index) => `
+              <div class="file-item flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                <div class="flex items-center space-x-3">
+                  <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">${file.name}</p>
+                    <p class="text-xs text-gray-500">${(file.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                </div>
+                <button onclick="proApp.removeFile(${index})" class="text-red-500 hover:text-red-700 transition">
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            `).join('')}
+          </div>
+          <div class="flex space-x-3 mt-4">
+            <button onclick="proApp.startMigration()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-3 rounded-lg shadow-md transition duration-150">
+              Inizia Migrazione
+            </button>
+            <button onclick="proApp.clearFiles()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-6 py-3 rounded-lg transition duration-150">
+              Cancella Tutto
+            </button>
+          </div>
+        </div>
+      ` : ''}
+      
+      ${this.migrationResults.length > 0 ? `
+        <div class="mt-6">
+          <h3 class="text-lg font-semibold mb-3">Risultati Migrazione</h3>
+          <div class="space-y-2">
+            ${this.migrationResults.map(result => `
+              <div class="p-4 border rounded-lg ${result.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}">
+                <div class="flex items-start space-x-3">
+                  ${result.success ? `
+                    <svg class="h-6 w-6 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  ` : `
+                    <svg class="h-6 w-6 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  `}
+                  <div class="flex-1">
+                    <p class="font-medium ${result.success ? 'text-green-800' : 'text-red-800'}">${result.filename}</p>
+                    <p class="text-sm ${result.success ? 'text-green-600' : 'text-red-600'} mt-1">${result.message}</p>
+                    ${result.username ? `<p class="text-xs text-gray-600 mt-1">Username: ${result.username}</p>` : ''}
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <button onclick="proApp.clearMigrationResults()" class="mt-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-4 py-2 rounded-lg transition duration-150">
+            Chiudi Risultati
+          </button>
+        </div>
+      ` : ''}
     </div>`;
   },
 
@@ -1454,6 +1591,368 @@ const proApp = {
       }
   },
   // FINE NUOVE FUNZIONI CRUD
+  
+  // ============================================
+  // MIGRATION FUNCTIONS
+  // ============================================
+  
+  handleDragOver(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const dropZone = document.getElementById('drop-zone');
+    if (dropZone) dropZone.classList.add('dragover');
+  },
+  
+  handleDragLeave(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const dropZone = document.getElementById('drop-zone');
+    if (dropZone) dropZone.classList.remove('dragover');
+  },
+  
+  handleDrop(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const dropZone = document.getElementById('drop-zone');
+    if (dropZone) dropZone.classList.remove('dragover');
+    
+    const files = Array.from(event.dataTransfer.files);
+    this.addFiles(files);
+  },
+  
+  handleFileSelect(event) {
+    const files = Array.from(event.target.files);
+    this.addFiles(files);
+    event.target.value = '';
+  },
+  
+  addFiles(files) {
+    const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'];
+    const validFiles = files.filter(file => {
+      const extension = file.name.split('.').pop().toLowerCase();
+      return allowedExtensions.includes(extension);
+    });
+    
+    if (validFiles.length !== files.length) {
+      alert(`Alcuni file sono stati ignorati. Sono consentiti solo: ${allowedExtensions.join(', ')}`);
+    }
+    
+    this.migrationFiles = [...this.migrationFiles, ...validFiles];
+    this.render();
+  },
+  
+  removeFile(index) {
+    this.migrationFiles.splice(index, 1);
+    this.render();
+  },
+  
+  clearFiles() {
+    this.migrationFiles = [];
+    this.render();
+  },
+  
+  clearMigrationResults() {
+    this.migrationResults = [];
+    this.render();
+  },
+  
+  async startMigration() {
+    if (this.migrationFiles.length === 0) {
+      alert('Seleziona almeno un file per la migrazione.');
+      return;
+    }
+    
+    showSpinner();
+    this.migrationResults = [];
+    
+    for (const file of this.migrationFiles) {
+      try {
+        const result = await this.migrateUserFromFile(file);
+        this.migrationResults.push(result);
+      } catch (error) {
+        console.error(`Error migrating file ${file.name}:`, error);
+        this.migrationResults.push({
+          filename: file.name,
+          success: false,
+          message: `Errore: ${error.message}`
+        });
+      }
+    }
+    
+    hideSpinner();
+    this.migrationFiles = [];
+    await this.loadClientsData();
+    this.render();
+  },
+  
+  async migrateUserFromFile(file) {
+    try {
+      // Read file content
+      const textContent = await this.readFileAsText(file);
+      
+      // Extract user data using Gemini
+      const userData = await this.extractUserDataWithGemini(textContent, file.name);
+      
+      if (!userData || !userData.username) {
+        return {
+          filename: file.name,
+          success: false,
+          message: 'Nessun dato utente valido trovato nel file.'
+        };
+      }
+      
+      // Generate unique username with underscores if needed
+      const finalUsername = await this.generateUniqueUsername(userData.username);
+      
+      if (!finalUsername) {
+        return {
+          filename: file.name,
+          success: false,
+          message: `Username ${userData.username} non disponibile (limite _ raggiunto).`
+        };
+      }
+      
+      // Create user with password 123456
+      const defaultPassword = '123456';
+      const passwordHash = simpleHash(defaultPassword).toString();
+      const userKey = finalUsername.toLowerCase();
+      const clientId = 'client_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+      
+      // Prepare user data
+      const newUserData = {
+        userType: "user",
+        displayUsername: finalUsername.toUpperCase(),
+        passwordHash: passwordHash,
+        uid: clientId,
+        data: {
+          habits: [],
+          workout: userData.workout || [],
+          uploadedWorkoutPlans: [],
+          diet: [],
+          dietPlan: userData.dietPlan || { targetCalories: 2000, plan: [] },
+          uploadedDietPlans: [],
+          dailyCompliance: {},
+          measurementsLog: userData.measurements ? [userData.measurements] : []
+        },
+        sleepStartTimestamp: null,
+        createdBy: this.user.uid,
+        createdAt: new Date().toISOString()
+      };
+      
+      // Save user to data.json
+      await apiCall('POST', { userId: clientId, data: newUserData });
+      
+      // Add to professional's client list
+      this.data.clients = this.data.clients || [];
+      this.data.clients.push({ uid: clientId, username: finalUsername.toUpperCase() });
+      await apiCall('POST', { userId: this.user.uid, data: this.data });
+      
+      return {
+        filename: file.name,
+        success: true,
+        message: 'Utente creato con successo!',
+        username: finalUsername.toUpperCase()
+      };
+      
+    } catch (error) {
+      console.error('Error in migrateUserFromFile:', error);
+      return {
+        filename: file.name,
+        success: false,
+        message: `Errore durante la migrazione: ${error.message}`
+      };
+    }
+  },
+  
+  async readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        try {
+          let textContent = '';
+          if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+            textContent = e.target.result;
+          } else if (file.type === 'application/json' || file.name.endsWith('.json')) {
+            textContent = e.target.result;
+          } else {
+            // For other file types (PDF, DOCX, XLS, etc.), try to extract text from base64
+            const base64Data = e.target.result.split(',')[1];
+            if (base64Data) {
+              try {
+                const binaryString = atob(base64Data);
+                textContent = binaryString;
+              } catch (e) {
+                textContent = e.target.result;
+              }
+            } else {
+              textContent = e.target.result;
+            }
+          }
+          resolve(textContent);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      
+      reader.onerror = () => reject(new Error('Errore durante la lettura del file'));
+      
+      // Read as text for text-based files, otherwise as data URL
+      if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.json')) {
+        reader.readAsText(file);
+      } else {
+        reader.readAsDataURL(file);
+      }
+    });
+  },
+  
+  async extractUserDataWithGemini(textContent, filename) {
+    try {
+      const prompt = `You are a helpful assistant that extracts user data from files for migration purposes.
+
+Extract the following information from the text and return it as a JSON object:
+- username: string (the person's name, e.g., "MARIO_ROSSI". If not found, use "USER" followed by a random number)
+- measurements: object with fields (if available):
+  - id: number (use current timestamp)
+  - date: string (ISO date, use today's date)
+  - raw: object with:
+    - weight: number (in kg)
+    - height: number (in cm)
+    - age: number
+    - gender: string ("UOMO" or "DONNA")
+    - waist: number (in cm)
+    - hips: number (in cm)
+    - chest: number (in cm)
+    - bicep: number (in cm)
+    - thigh: number (in cm)
+  - calculated: object with:
+    - bmi: string (calculated BMI)
+    - whr: string (waist-to-hip ratio)
+    - bodyFat: string (body fat percentage or "N/D")
+    - classification: string (BMI classification or "Da Calcolare")
+    - risk: string (health risk or "Da Calcolare")
+- workout: array of workout objects (if available), each with:
+  - id: number (unique ID)
+  - day: string (e.g., "GIORNO A", "LUNEDÌ")
+  - exercise: string (exercise name in UPPERCASE)
+  - sets: number (number of sets, default 0)
+  - reps: number (number of reps, default 0)
+  - load: string (weight/load, default "N/D")
+- dietPlan: object (if available) with:
+  - targetCalories: number (default 2000)
+  - plan: array of day objects, each with:
+    - day: string (e.g., "LUNEDÌ", "MARTEDÌ", etc.)
+    - meals: array of meal objects, each with:
+      - category: string (meal type, e.g., "COLAZIONE", "PRANZO", "CENA")
+      - description: string (food description in UPPERCASE)
+      - weight: string (portion size, e.g., "150G")
+      - type: string (food type, e.g., "RICETTA", "INTEGRATORE")
+      - calories: number
+
+Important rules:
+1. All text values must be in UPPERCASE
+2. If data is not found, omit that field from the JSON (don't include null or empty values)
+3. Return ONLY the JSON object, no other text
+4. If you cannot extract any meaningful data, return: {"username": "USER_${Date.now()}"}
+
+Here is the content from file "${filename}":
+${textContent.substring(0, 15000)}`;
+
+      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `Gemini API error: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      const content = data.candidates[0].content.parts[0].text;
+      
+      // Extract JSON from response (might be wrapped in markdown code blocks)
+      let jsonText = content;
+      if (content.includes('```json')) {
+        const match = content.match(/```json\n([\s\S]*?)\n```/);
+        jsonText = match ? match[1] : content;
+      } else if (content.includes('```')) {
+        const match = content.match(/```\n([\s\S]*?)\n```/);
+        jsonText = match ? match[1] : content;
+      }
+      
+      const userData = JSON.parse(jsonText);
+      
+      // Ensure username exists
+      if (!userData.username) {
+        userData.username = `USER_${Date.now()}`;
+      }
+      
+      return userData;
+    } catch (error) {
+      console.error('Error extracting user data with Gemini:', error);
+      throw new Error('Impossibile estrarre i dati con Gemini: ' + error.message);
+    }
+  },
+  
+  async generateUniqueUsername(baseUsername) {
+    const normalizedBase = baseUsername.replace(/\s+/g, '_').toUpperCase();
+    let username = normalizedBase;
+    let underscoreCount = 0;
+    
+    // Check if username exists
+    while (underscoreCount <= 4) {
+      const exists = await this.checkUsernameExists(username);
+      if (!exists) {
+        return username;
+      }
+      
+      if (underscoreCount >= 4) {
+        return null; // Max underscores reached
+      }
+      
+      underscoreCount++;
+      username = normalizedBase + '_'.repeat(underscoreCount);
+    }
+    
+    return null;
+  },
+  
+  async checkUsernameExists(username) {
+    const userKey = username.toLowerCase();
+    const hashBasedUid = simpleHash(userKey).toString();
+    
+    // Check in data.json
+    try {
+      const result = await apiCall('GET', { userId: hashBasedUid });
+      if (result.success && result.data) {
+        return true;
+      }
+    } catch (err) {
+      console.error("Failed to check username:", err);
+    }
+    
+    // Check in current clients list
+    const clients = this.data.clients || [];
+    const existsInClients = clients.some(c => c.username.toLowerCase() === userKey);
+    
+    return existsInClients;
+  },
+  // END MIGRATION FUNCTIONS
   
   async signOut() {
     try {
