@@ -425,5 +425,59 @@ export const Auth = {
             };
         }
         return null;
+    },
+
+    // -------------------
+    // PWA INSTALL
+    // -------------------
+    // Store the deferred prompt event
+    _deferredPrompt: null,
+
+    // Setup PWA install prompt listener
+    setupPWAInstallPrompt: function(callback) {
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            Auth._deferredPrompt = e;
+            if (callback) callback(e);
+        });
+    },
+
+    // Check if PWA install is available
+    isPWAInstallAvailable: function() {
+        return Auth._deferredPrompt !== null;
+    },
+
+    // Install PWA
+    installPWA: async function() {
+        if (!Auth._deferredPrompt) {
+            return {
+                success: false,
+                message: 'IL BROWSER NON SUPPORTA L\'INSTALLAZIONE DIRETTA O L\'APP È GIÀ INSTALLATA.'
+            };
+        }
+
+        try {
+            Auth._deferredPrompt.prompt();
+            const { outcome } = await Auth._deferredPrompt.userChoice;
+            Auth._deferredPrompt = null;
+
+            if (outcome === 'accepted') {
+                return {
+                    success: true,
+                    message: 'INSTALLAZIONE PWA ACCETTATA!'
+                };
+            } else {
+                return {
+                    success: false,
+                    message: 'INSTALLAZIONE PWA RIFIUTATA.'
+                };
+            }
+        } catch (error) {
+            console.error('Error during PWA installation:', error);
+            return {
+                success: false,
+                message: 'ERRORE DURANTE L\'INSTALLAZIONE PWA.'
+            };
+        }
     }
 };

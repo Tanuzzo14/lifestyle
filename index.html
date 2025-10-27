@@ -1080,16 +1080,11 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
         toggleMenu: function() { state.isMenuOpen = !state.isMenuOpen; render(); },
 
         installPWA: async function() {
-          if (state.deferredPrompt) {
-            state.deferredPrompt.prompt();
-            const { outcome } = await state.deferredPrompt.userChoice;
-            if (outcome === 'accepted') displayError('INSTALLAZIONE PWA ACCETTATA!');
-            else displayError('INSTALLAZIONE PWA RIFIUTATA.');
-            state.deferredPrompt = null;
-            render();
-          } else {
-            displayError('IL BROWSER NON SUPPORTA L\'INSTALLAZIONE DIRETTA O L\'APP È GIÀ INSTALLATA.');
-          }
+          const result = await Auth.installPWA();
+          displayError(result.message);
+          // Update state for UI consistency
+          state.deferredPrompt = Auth._deferredPrompt;
+          render();
         },
 
         viewFile: function(id, type) {
@@ -1696,7 +1691,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
       }
 
       function renderLogin() {
-  const installButton = state.deferredPrompt 
+  const installButton = Auth.isPWAInstallAvailable() 
     ? `<button onclick="window.app.installPWA()" class="w-full p-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 mt-4 flex items-center justify-center space-x-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
@@ -1726,7 +1721,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
 }
 
 function renderRegister() {
-  const installButton = state.deferredPrompt 
+  const installButton = Auth.isPWAInstallAvailable() 
     ? `<button onclick="window.app.installPWA()" class="w-full p-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 mt-4 flex items-center justify-center space-x-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
@@ -2328,9 +2323,8 @@ function renderRegister() {
       // on initial load, render
       render();
 
-      // PWA prompt handling (unchanged)
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
+      // PWA prompt handling using Auth module
+      Auth.setupPWAInstallPrompt((e) => {
         state.deferredPrompt = e;
         render();
       });
