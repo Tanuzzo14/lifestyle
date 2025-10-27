@@ -44,6 +44,14 @@
         <div id="logout-result"></div>
     </div>
     
+    <div class="test-section">
+        <h2>Test PWA Install Functions</h2>
+        <button onclick="testPWASetup()">Setup PWA Install Prompt</button>
+        <button onclick="testPWAAvailability()">Check PWA Install Availability</button>
+        <button onclick="testPWAInstall()">Test PWA Install</button>
+        <div id="pwa-result"></div>
+    </div>
+    
     <script type="module">
         import { Auth } from './auth.js';
         
@@ -116,6 +124,44 @@
                 }
             } catch (error) {
                 displayMessage('logout-result', `✗ Error: ${error.message}`, true);
+            }
+        };
+        
+        window.testPWASetup = function() {
+            try {
+                Auth.setupPWAInstallPrompt((e) => {
+                    console.log('PWA Install Prompt event captured:', e);
+                    displayMessage('pwa-result', '✓ PWA Install Prompt setup successful!');
+                });
+                displayMessage('pwa-result', '✓ PWA Install Prompt listener registered!');
+            } catch (error) {
+                displayMessage('pwa-result', `✗ Error: ${error.message}`, true);
+            }
+        };
+        
+        window.testPWAAvailability = function() {
+            try {
+                const isAvailable = Auth.isPWAInstallAvailable();
+                if (isAvailable) {
+                    displayMessage('pwa-result', '✓ PWA Install is available!');
+                } else {
+                    displayMessage('pwa-result', '⚠ PWA Install is not currently available (prompt not triggered yet or app already installed)', false);
+                }
+            } catch (error) {
+                displayMessage('pwa-result', `✗ Error: ${error.message}`, true);
+            }
+        };
+        
+        window.testPWAInstall = async function() {
+            try {
+                const result = await Auth.installPWA();
+                if (result.success) {
+                    displayMessage('pwa-result', `✓ ${result.message}`);
+                } else {
+                    displayMessage('pwa-result', `⚠ ${result.message}`, false);
+                }
+            } catch (error) {
+                displayMessage('pwa-result', `✗ Error: ${error.message}`, true);
             }
         };
     </script>

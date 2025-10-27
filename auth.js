@@ -145,6 +145,12 @@ async function syncLocalStorageToDataJson() {
 }
 
 // ---------------------------------------------
+// PWA INSTALL (Private State)
+// ---------------------------------------------
+let deferredPrompt = null;
+let isListenerSetup = false;
+
+// ---------------------------------------------
 // AUTH MODULE
 // ---------------------------------------------
 export const Auth = {
@@ -425,5 +431,61 @@ export const Auth = {
             };
         }
         return null;
+    },
+
+    // -------------------
+    // PWA INSTALL
+    // -------------------
+    // Setup PWA install prompt listener
+    setupPWAInstallPrompt: function(callback) {
+        if (isListenerSetup) {
+            console.warn('PWA install prompt listener already setup');
+            return;
+        }
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            if (callback) callback(e);
+        });
+        isListenerSetup = true;
+    },
+
+    // Check if PWA install is available
+    isPWAInstallAvailable: function() {
+        return deferredPrompt !== null;
+    },
+
+    // Install PWA
+    installPWA: async function() {
+        if (!deferredPrompt) {
+            return {
+                success: false,
+                message: 'IL BROWSER NON SUPPORTA L\'INSTALLAZIONE DIRETTA O L\'APP È GIÀ INSTALLATA.'
+            };
+        }
+
+        try {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+
+            if (outcome === 'accepted') {
+                return {
+                    success: true,
+                    message: 'INSTALLAZIONE PWA ACCETTATA!'
+                };
+            } else {
+                return {
+                    success: false,
+                    message: 'INSTALLAZIONE PWA RIFIUTATA.'
+                };
+            }
+        } catch (error) {
+            console.error('Error during PWA installation:', error);
+            return {
+                success: false,
+                message: 'ERRORE DURANTE L\'INSTALLAZIONE PWA.'
+            };
+        }
     }
 };
