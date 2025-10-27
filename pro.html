@@ -629,6 +629,7 @@ const proApp = {
             <button onclick="proApp.setClientView('workout')" class="tab-button p-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentClientView === 'workout' || this.currentClientView === 'workoutImport' ? 'active' : ''}">Allenamento</button>
             <button onclick="proApp.setClientView('diet')" class="tab-button p-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentClientView === 'diet' || this.currentClientView === 'dietImport' ? 'active' : ''}">Dieta</button>
             <button onclick="proApp.setClientView('measurements')" class="tab-button p-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentClientView === 'measurements' ? 'active' : ''}">Misure</button>
+            <button onclick="proApp.setClientView('password')" class="tab-button p-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentClientView === 'password' ? 'active' : ''}">Password</button>
             <button onclick="proApp.setClientView('advanced')" class="tab-button p-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentClientView === 'advanced' ? 'active' : ''}">Avanzate (JSON)</button>
         </div>
 
@@ -979,6 +980,35 @@ const proApp = {
         </div>`;
     };
 
+    // ----------- Password Change Dashboard -----------
+    const renderPasswordDashboard = () => {
+        return `<div class="p-4 space-y-6">
+            <h2 class="text-2xl font-bold text-indigo-600">CAMBIO PASSWORD UTENTE</h2>
+            <p class="text-sm text-gray-600 mb-4 no-uppercase">Modifica la password per questo utente. L'utente dovrà utilizzare la nuova password per accedere.</p>
+            
+            <form onsubmit="event.preventDefault(); proApp.changeClientPassword('${uid}', this.newPassword.value, this.confirmPassword.value); this.reset();" class="space-y-4 bg-white p-4 rounded-lg shadow">
+                <div>
+                    <label class="block text-sm font-medium mb-1">NUOVA PASSWORD</label>
+                    <input type="password" name="newPassword" required minlength="6" placeholder="Minimo 6 caratteri" class="w-full p-3 border rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">CONFERMA NUOVA PASSWORD</label>
+                    <input type="password" name="confirmPassword" required minlength="6" placeholder="Conferma la nuova password" class="w-full p-3 border rounded-lg">
+                </div>
+                <button type="submit" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 mt-4">CAMBIA PASSWORD</button>
+            </form>
+            
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+                <h3 class="font-bold text-yellow-800 mb-2">⚠️ ATTENZIONE</h3>
+                <ul class="text-sm text-yellow-700 space-y-1 list-disc list-inside">
+                    <li>Dopo aver cambiato la password, l'utente dovrà effettuare nuovamente il login con la nuova password.</li>
+                    <li>Assicurati di comunicare la nuova password all'utente in modo sicuro.</li>
+                    <li>La password deve contenere almeno 6 caratteri.</li>
+                </ul>
+            </div>
+        </div>`;
+    };
+
     switch(this.currentClientView) {
         case 'workout':
             return renderWorkoutDashboard();
@@ -990,6 +1020,8 @@ const proApp = {
           return  renderDietImport(); 
         case 'measurements':
             return renderMeasurementsDashboard();
+        case 'password':
+            return renderPasswordDashboard();
         case 'advanced':
             return renderAdvancedEdit();
         default:
@@ -1596,6 +1628,52 @@ const proApp = {
       }
   },
   // FINE NUOVE FUNZIONI CRUD
+  
+  // ============================================
+  // PASSWORD CHANGE FUNCTION
+  // ============================================
+  
+  async changeClientPassword(uid, newPassword, confirmPassword) {
+    if (!uid) return;
+    
+    // Validate inputs
+    if (!newPassword || !confirmPassword) {
+      return alert('Tutti i campi sono obbligatori.');
+    }
+    
+    if (newPassword !== confirmPassword) {
+      return alert('Le password non corrispondono.');
+    }
+    
+    if (newPassword.length < 6) {
+      return alert('La password deve contenere almeno 6 caratteri.');
+    }
+    
+    try {
+      const clientData = this.clientsData[uid];
+      if (!clientData) {
+        return alert('Cliente non trovato.');
+      }
+      
+      // Hash the new password
+      const newPasswordHash = simpleHash(newPassword).toString();
+      
+      // Update password in client data
+      clientData.passwordHash = newPasswordHash;
+      
+      // Save to backend
+      await apiCall('POST', { userId: uid, data: clientData });
+      
+      // Update local cache
+      this.clientsData[uid].passwordHash = newPasswordHash;
+      
+      alert('Password cambiata con successo! L\'utente dovrà effettuare nuovamente il login con la nuova password.');
+      this.openEditClientModal(uid, 'password');
+    } catch (err) {
+      console.error('Errore cambio password:', err);
+      alert('Errore durante il cambio password: ' + (err?.message || err));
+    }
+  },
   
   // ============================================
   // MIGRATION FUNCTIONS
