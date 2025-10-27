@@ -92,6 +92,11 @@
         pointer-events: auto;
     }
 </style>
+    <!-- PDF.js (necessario per leggere PDF) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <!-- JSZip (necessario per leggere file docx/xlsx come zip) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
 </head>
 <body class="bg-gray-100 text-gray-800 min-h-screen">
 <div id="loading-spinner">
@@ -1685,136 +1690,71 @@ const proApp = {
     this.render();
   },
 
-    async migrateUserFromFile(file) {
+    async  async migrateUserFromFile(file) {
         try {
-            // 🔹 Mappa dei formati accettati e tipo di parser
             const acceptedFormats = {
                 '.pdf': 'pdf',
                 '.docx': 'office',
-                '.doc': 'office',
-                '.xls': 'office',
                 '.xlsx': 'office',
                 '.txt': 'txt'
             };
 
             const fileName = file.name;
             const lastDotIndex = fileName.lastIndexOf('.');
-            if (lastDotIndex === -1) {
-                throw new Error('Formato file non supportato: il file non ha estensione.');
-            }
+            if (lastDotIndex === -1) throw new Error('Il file non ha estensione.');
 
             const fileExtension = fileName.substring(lastDotIndex).toLowerCase();
             const parserType = acceptedFormats[fileExtension];
-            if (!parserType) {
-                throw new Error(`Formato file non supportato: ${fileExtension}`);
-            }
+            if (!parserType) throw new Error(`Formato ${fileExtension} non supportato.`);
 
-            // 🔹 Lettura del contenuto testuale dal file (in base al tipo)
             let textContent = '';
-            try {
-                if (parserType === 'txt') {
-                    textContent = await this.readFileAsText(file);
-                } else if (parserType === 'pdf') {
-                    textContent = await this.extractTextFromPdf(file);
-                } else if (parserType === 'office') {
-                    textContent = await this.extractTextFromOffice(file);
-                } else {
-                    throw new Error('Tipo di parser non riconosciuto.');
-                }
-            } catch (parseErr) {
-                throw new Error(`Errore durante l'estrazione del testo dal file: ${parseErr.message}`);
+
+            if (parserType === 'txt') {
+                textContent = await readFileAsText(file);
+            } else if (parserType === 'pdf') {
+                textContent = await extractTextFromPdf(file);
+            } else if (parserType === 'office') {
+                textContent = await extractTextFromOffice(file);
             }
 
-            // 🔹 Estrazione dei dati utente dal testo
-            const userData = await this.extractUserDataWithGemini(textContent, file.name);
+            // Qui puoi fare l'elaborazione del testo (es: invio a Gemini)
+            console.log("✅ Testo estratto:", textContent.substring(0, 300), "...");
 
-            if (!userData || !userData.username) {
-                return {
-                    filename: file.name,
-                    success: false,
-                    message: 'Nessun dato utente valido trovato nel file.'
-                };
-            }
-
-            // 🔹 Genera username univoco
-            const finalUsername = await this.generateUniqueUsername(userData.username);
-            if (!finalUsername) {
-                return {
-                    filename: file.name,
-                    success: false,
-                    message: `Username ${userData.username} non disponibile (limite _ raggiunto).`
-                };
-            }
-
-            // 🔹 Crea utente con password di default
-            const defaultPassword = '123456';
-            const passwordHash = simpleHash(defaultPassword).toString();
-            const userKey = finalUsername.toLowerCase();
-            const clientId = 'client_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
-
-            const newUserData = {
-                userType: "user",
-                displayUsername: finalUsername.toUpperCase(),
-                passwordHash: passwordHash,
-                uid: clientId,
-                data: {
-                    habits: [],
-                    workout: userData.workout || [],
-                    uploadedWorkoutPlans: [],
-                    diet: [],
-                    dietPlan: userData.dietPlan || { targetCalories: 2000, plan: [] },
-                    uploadedDietPlans: [],
-                    dailyCompliance: {},
-                    measurementsLog: userData.measurements ? [userData.measurements] : []
-                },
-                sleepStartTimestamp: null,
-                createdBy: this.user.uid,
-                createdAt: new Date().toISOString()
-            };
-
-            // 🔹 Salva utente e aggiorna lista clienti
-            await apiCall('POST', { userId: clientId, data: newUserData });
-            this.data.clients = this.data.clients || [];
-            this.data.clients.push({ uid: clientId, username: finalUsername.toUpperCase() });
-            await apiCall('POST', { userId: this.user.uid, data: this.data });
-
-            return {
-                filename: file.name,
-                success: true,
-                message: 'Utente creato con successo!',
-                username: finalUsername.toUpperCase()
-            };
+            // Puoi proseguire qui con la tua logica (estrazione userData ecc.)
+            return textContent;
 
         } catch (error) {
-            console.error('Error in migrateUserFromFile:', error);
-            return {
-                filename: file.name,
-                success: false,
-                message: `Errore durante la migrazione: ${error.message}`
-            };
+            console.error("Errore durante la migrazione:", error);
+            alert(`Errore: ${error.message}`);
         }
     },
 
-    // 🔹 Lettura come ArrayBuffer (utile per PDF)
-    async readFileAsArrayBuffer(file) {
+// 🔹 Lettura file come testo
+    async  readFileAsText(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = e => resolve(e.target.result);
-            reader.onerror = reject;
+            reader.onerror = e => reject(e);
+            reader.readAsText(file);
+        });
+    },
+
+// 🔹 Lettura file come ArrayBuffer
+    async  readFileAsArrayBuffer(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = e => reject(e);
             reader.readAsArrayBuffer(file);
         });
     },
 
-// 🔹 Estrazione testo da PDF
+// 🔹 Estrazione testo da PDF (usa pdf.js via CDN)
     async extractTextFromPdf(file) {
-        const pdfjsLib = await import('pdfjs-dist/build/pdf');
-        const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-
-        const data = await this.readFileAsArrayBuffer(file);
-        const pdf = await pdfjsLib.getDocument({ data }).promise;
-
+        const arrayBuffer = await readFileAsArrayBuffer(file);
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         let fullText = '';
+
         for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
             const textContent = await page.getTextContent();
@@ -1823,59 +1763,31 @@ const proApp = {
         return fullText.trim();
     },
 
-// 🔹 Estrazione testo da file Office (DOCX, XLSX, ecc.)
-    async extractTextFromOffice(file) {
-        // Usa libreria tesseract o mammoth.js nel browser
-        // oppure invia al backend per l'estrazione lato server
-        const { default: mammoth } = await import('mammoth');
-        const arrayBuffer = await this.readFileAsArrayBuffer(file);
-        const result = await mammoth.extractRawText({ arrayBuffer });
-        return result.value || '';
+// 🔹 Estrazione testo da DOCX / XLSX (usa JSZip via CDN)
+    async  extractTextFromOffice(file) {
+        const arrayBuffer = await readFileAsArrayBuffer(file);
+        const zip = await JSZip.loadAsync(arrayBuffer);
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        if (ext === 'docx') {
+            const docXml = await zip.file("word/document.xml").async("string");
+            const text = docXml.replace(/<[^>]+>/g, ' ');
+            return text;
+        }
+
+        if (ext === 'xlsx') {
+            const sheets = Object.keys(zip.files).filter(f => f.match(/xl\/worksheets\/sheet\d+\.xml/));
+            let allText = '';
+            for (const sheet of sheets) {
+                const xml = await zip.file(sheet).async("string");
+                allText += xml.replace(/<[^>]+>/g, ' ') + '\n';
+            }
+            return allText.trim();
+        }
+
+        throw new Error(`Formato ${ext} non gestito in extractTextFromOffice`);
     },
 
-
-    async readFileAsText(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        try {
-          let textContent = '';
-          if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
-            textContent = e.target.result;
-          } else if (file.type === 'application/json' || file.name.endsWith('.json')) {
-            textContent = e.target.result;
-          } else {
-            // For other file types (PDF, DOCX, XLS, etc.), try to extract text from base64
-            const base64Data = e.target.result.split(',')[1];
-            if (base64Data) {
-              try {
-                const binaryString = atob(base64Data);
-                textContent = binaryString;
-              } catch (e) {
-                textContent = e.target.result;
-              }
-            } else {
-              textContent = e.target.result;
-            }
-          }
-          resolve(textContent);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      
-      reader.onerror = () => reject(new Error('Errore durante la lettura del file'));
-      
-      // Read as text for text-based files, otherwise as data URL
-      if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.json')) {
-        reader.readAsText(file);
-      } else {
-        reader.readAsDataURL(file);
-      }
-    });
-  },
-  
   async extractUserDataWithGemini(textContent, filename) {
     try {
       const prompt = `You are a helpful assistant that extracts user data from files for migration purposes.
