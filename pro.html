@@ -2354,22 +2354,22 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo con almeno ${
       const data = await response.json();
       const content = data.candidates[0].content.parts[0].text;
       
-      // Extract JSON from response
+      // Extract JSON from response with proper null safety
       let jsonText = content;
       if (content.includes('```json')) {
         const match = content.match(/```json\n([\s\S]*?)\n```/);
-        jsonText = match ? match[1] : content;
+        jsonText = (match && match[1]) ? match[1] : content;
       } else if (content.includes('```')) {
         const match = content.match(/```\n([\s\S]*?)\n```/);
-        jsonText = match ? match[1] : content;
+        jsonText = (match && match[1]) ? match[1] : content;
       }
       
       const workoutPlan = JSON.parse(jsonText);
       
-      // Save the workout plan to the client
+      // Save the workout plan to the client with robust ID generation
       const baseId = Date.now();
       clientData.data.workout = workoutPlan.map((item, index) => ({
-        id: baseId + index,
+        id: baseId + index * 1000 + Math.floor(Math.random() * 1000),
         day: item.day?.toUpperCase() || 'NON SPECIFICATO',
         exercise: item.exercise?.toUpperCase() || 'NON SPECIFICATO',
         sets: parseInt(item.sets) || 0,
@@ -2503,14 +2503,14 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per tutti i 7
       const data = await response.json();
       const content = data.candidates[0].content.parts[0].text;
       
-      // Extract JSON from response
+      // Extract JSON from response with proper null safety
       let jsonText = content;
       if (content.includes('```json')) {
         const match = content.match(/```json\n([\s\S]*?)\n```/);
-        jsonText = match ? match[1] : content;
+        jsonText = (match && match[1]) ? match[1] : content;
       } else if (content.includes('```')) {
         const match = content.match(/```\n([\s\S]*?)\n```/);
-        jsonText = match ? match[1] : content;
+        jsonText = (match && match[1]) ? match[1] : content;
       }
       
       const dietPlan = JSON.parse(jsonText);
