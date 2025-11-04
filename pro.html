@@ -2271,7 +2271,23 @@ ${textContent.substring(0, 15000)}`;
     }
 
     const lastMeasurement = clientData.data.measurementsLog[clientData.data.measurementsLog.length - 1];
-    const { weight, height, age, gender, waist, hips, chest, bicep, thigh } = lastMeasurement.raw;
+    const { 
+      weight = 0, 
+      height = 0, 
+      age = 0, 
+      gender = 'N/D', 
+      waist = 0, 
+      hips = 0, 
+      chest = 0, 
+      bicep = 0, 
+      thigh = 0 
+    } = lastMeasurement.raw || {};
+
+    // Validate that essential measurements exist
+    if (!weight || !height || !age || !gender || gender === 'N/D') {
+      alert('Le misure essenziali dell\'utente (peso, altezza, età, sesso) non sono complete.');
+      return;
+    }
 
     showSpinner();
     try {
@@ -2341,16 +2357,19 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo con almeno ${
       // Extract JSON from response
       let jsonText = content;
       if (content.includes('```json')) {
-        jsonText = content.match(/```json\n([\s\S]*?)\n```/)[1];
+        const match = content.match(/```json\n([\s\S]*?)\n```/);
+        jsonText = match ? match[1] : content;
       } else if (content.includes('```')) {
-        jsonText = content.match(/```\n([\s\S]*?)\n```/)[1];
+        const match = content.match(/```\n([\s\S]*?)\n```/);
+        jsonText = match ? match[1] : content;
       }
       
       const workoutPlan = JSON.parse(jsonText);
       
       // Save the workout plan to the client
-      clientData.data.workout = workoutPlan.map(item => ({
-        id: Date.now() + Math.random(),
+      const baseId = Date.now();
+      clientData.data.workout = workoutPlan.map((item, index) => ({
+        id: baseId + index,
         day: item.day?.toUpperCase() || 'NON SPECIFICATO',
         exercise: item.exercise?.toUpperCase() || 'NON SPECIFICATO',
         sets: parseInt(item.sets) || 0,
@@ -2394,7 +2413,23 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo con almeno ${
     }
 
     const lastMeasurement = clientData.data.measurementsLog[clientData.data.measurementsLog.length - 1];
-    const { weight, height, age, gender, waist, hips, chest, bicep, thigh } = lastMeasurement.raw;
+    const { 
+      weight = 0, 
+      height = 0, 
+      age = 0, 
+      gender = 'N/D', 
+      waist = 0, 
+      hips = 0, 
+      chest = 0, 
+      bicep = 0, 
+      thigh = 0 
+    } = lastMeasurement.raw || {};
+
+    // Validate that essential measurements exist
+    if (!weight || !height || !age || !gender || gender === 'N/D') {
+      alert('Le misure essenziali dell\'utente (peso, altezza, età, sesso) non sono complete.');
+      return;
+    }
 
     showSpinner();
     try {
@@ -2471,9 +2506,11 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per tutti i 7
       // Extract JSON from response
       let jsonText = content;
       if (content.includes('```json')) {
-        jsonText = content.match(/```json\n([\s\S]*?)\n```/)[1];
+        const match = content.match(/```json\n([\s\S]*?)\n```/);
+        jsonText = match ? match[1] : content;
       } else if (content.includes('```')) {
-        jsonText = content.match(/```\n([\s\S]*?)\n```/)[1];
+        const match = content.match(/```\n([\s\S]*?)\n```/);
+        jsonText = match ? match[1] : content;
       }
       
       const dietPlan = JSON.parse(jsonText);
