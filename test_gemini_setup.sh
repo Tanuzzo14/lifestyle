@@ -37,7 +37,7 @@ if (!defined('GEMINI_API_KEY')) {
     echo '✗ GEMINI_API_KEY not defined in config.php\n';
     exit(1);
 }
-if (GEMINI_API_KEY === 'AIzaSyCCE_m_W_L2DpBwA3hjaqMrOj-W1ws3Kv4') {
+if (GEMINI_API_KEY === '--') {
     echo '✗ API key not configured (still using placeholder)\n';
     echo '  Please edit config.php and add your actual Gemini API key\n';
     exit(1);

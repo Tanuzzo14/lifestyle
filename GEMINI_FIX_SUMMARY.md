@@ -56,7 +56,7 @@
 
 ```javascript
 // config.js (ESPOSTO AL PUBBLICO)
-const GEMINI_API_KEY = 'AIzaSyCCE_m_W_L2DpBwA3hjaqMrOj-W1ws3Kv4';
+const GEMINI_API_KEY = '--';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/...';
 
 // Chiamata diretta dall'HTML
@@ -75,7 +75,7 @@ fetch(GEMINI_PROXY_URL, {...})
 
 ```php
 // config.php (SERVER-SIDE, PROTETTO)
-define('GEMINI_API_KEY', 'AIzaSyCCE_m_W_L2DpBwA3hjaqMrOj-W1ws3Kv4');
+define('GEMINI_API_KEY', '--');
 
 // gemini_proxy.php
 require_once 'config.php';
