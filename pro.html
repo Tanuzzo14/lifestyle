@@ -12,8 +12,8 @@
     .client-table th { border-bottom: 2px solid #e5e7eb; }
     .client-card { transition: transform 0.2s, box-shadow 0.2s; }
     .client-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); }
-    .tab-button.active { border-bottom: 3px solid #4f46e5; color: #4f46e5; font-weight: 600; }
-    .main-tab-button.active { border-bottom: 3px solid #4f46e5; color: #4f46e5; font-weight: 600; }
+    .tab-button.active { border-bottom: 3px solid #D4AF37; color: #D4AF37; font-weight: 600; }
+    .main-tab-button.active { border-bottom: 3px solid #D4AF37; color: #D4AF37; font-weight: 600; }
     
     /* Drag and drop styles */
     .drop-zone {
@@ -25,11 +25,11 @@
       cursor: pointer;
     }
     .drop-zone:hover {
-      border-color: #6366f1;
+      border-color: #D4AF37;
       background-color: #f8fafc;
     }
     .drop-zone.dragover {
-      border-color: #4f46e5;
+      border-color: #D4AF37;
       background-color: #eef2ff;
     }
     .file-item {
@@ -104,7 +104,7 @@
 </div>
 <div id="app" class="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
   <div id="loading-indicator" class="text-center py-10 bg-white rounded-xl shadow">
-    <svg class="animate-spin h-8 w-8 text-indigo-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <svg class="animate-spin h-8 w-8 text-[#D4AF37] mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
     </svg>
@@ -437,12 +437,12 @@ const proApp = {
           Dashboard Professionista
         </h1>
         <p class="text-lg text-gray-600 mt-1">
-          Benvenuto <span class="font-semibold text-indigo-600">${displayName}</span>
+          Benvenuto <span class="font-semibold text-[#D4AF37]">${displayName}</span>
         </p>
       </div>
       <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 mt-4 sm:mt-0">
         <button onclick="proApp.openAddClientModal()" 
-          class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-2 rounded-lg shadow-md transition duration-150">
+          class="bg-[#D4AF37] hover:bg-[#F4D03F] text-white font-medium px-6 py-2 rounded-lg shadow-md transition duration-150">
           + Nuovo Utente
         </button>
         <button onclick="proApp.signOut()" 
@@ -453,7 +453,7 @@ const proApp = {
     </header>
     
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-      <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-indigo-500">
+      <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-[#D4AF37]">
         <p class="text-sm font-medium text-gray-500">Totale Utenti Gestiti</p>
         <p class="text-3xl font-bold text-gray-900 mt-1">${clientsCount}</p>
       </div>
@@ -461,10 +461,10 @@ const proApp = {
     
     <div class="mb-8">
       <div class="flex border-b border-gray-200 bg-white rounded-t-xl shadow">
-        <button onclick="proApp.setMainView('clients')" class="main-tab-button px-6 py-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentMainView === 'clients' ? 'active' : ''}">Elenco Utenti</button>
-        <button onclick="proApp.setMainView('createWorkout')" class="main-tab-button px-6 py-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentMainView === 'createWorkout' ? 'active' : ''}">Crea Piano Allenamento</button>
-        <button onclick="proApp.setMainView('createDiet')" class="main-tab-button px-6 py-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentMainView === 'createDiet' ? 'active' : ''}">Crea Piano Nutrizionale</button>
-        <button onclick="proApp.setMainView('migration')" class="main-tab-button px-6 py-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentMainView === 'migration' ? 'active' : ''}">Migrazione</button>
+        <button onclick="proApp.setMainView('clients')" class="main-tab-button px-6 py-4 text-gray-600 hover:text-[#D4AF37] transition duration-150 ${this.currentMainView === 'clients' ? 'active' : ''}">Elenco Utenti</button>
+        <button onclick="proApp.setMainView('createWorkout')" class="main-tab-button px-6 py-4 text-gray-600 hover:text-[#D4AF37] transition duration-150 ${this.currentMainView === 'createWorkout' ? 'active' : ''}">Crea Piano Allenamento</button>
+        <button onclick="proApp.setMainView('createDiet')" class="main-tab-button px-6 py-4 text-gray-600 hover:text-[#D4AF37] transition duration-150 ${this.currentMainView === 'createDiet' ? 'active' : ''}">Crea Piano Nutrizionale</button>
+        <button onclick="proApp.setMainView('migration')" class="main-tab-button px-6 py-4 text-gray-600 hover:text-[#D4AF37] transition duration-150 ${this.currentMainView === 'migration' ? 'active' : ''}">Migrazione</button>
       </div>
       <div id="main-content" class="bg-white shadow-xl rounded-b-xl">
         ${this.renderMainContent()}
@@ -490,7 +490,7 @@ const proApp = {
               </ul>
             </div>
             <div class="flex flex-wrap gap-2 mt-3 md:mt-0 md:ml-4">
-              <button onclick="proApp.openEditClientModal('${c.uid}')" class="text-indigo-600 border border-indigo-600 px-3 py-1 text-sm rounded-lg">Gestisci Dati</button>
+              <button onclick="proApp.openEditClientModal('${c.uid}')" class="text-[#D4AF37] border border-[#D4AF37] px-3 py-1 text-sm rounded-lg">Gestisci Dati</button>
               <button onclick="proApp.removeClient('${c.uid}')" class="bg-red-500 text-white px-3 py-1 text-sm rounded-lg">Rimuovi</button>
             </div>
           </div>`;
@@ -535,7 +535,7 @@ const proApp = {
           <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
         <p class="mt-2 text-sm text-gray-600">
-          <span class="font-semibold text-indigo-600">Clicca per selezionare</span> o trascina i file qui
+          <span class="font-semibold text-[#D4AF37]">Clicca per selezionare</span> o trascina i file qui
         </p>
         <p class="mt-1 text-xs text-gray-500">PDF, DOCX, XLS, XLSX, DOC, TXT</p>
       </div>
@@ -565,7 +565,7 @@ const proApp = {
             `).join('')}
           </div>
           <div class="flex space-x-3 mt-4">
-            <button onclick="proApp.startMigration()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-3 rounded-lg shadow-md transition duration-150">
+            <button onclick="proApp.startMigration()" class="flex-1 bg-[#D4AF37] hover:bg-[#F4D03F] text-white font-medium px-6 py-3 rounded-lg shadow-md transition duration-150">
               Inizia Migrazione
             </button>
             <button onclick="proApp.clearFiles()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-6 py-3 rounded-lg transition duration-150">
@@ -871,11 +871,11 @@ const proApp = {
         <p class="text-sm text-gray-500 mb-5 border-b pb-3">Modifica i dati di allenamento, dieta o misure.</p>
         
         <div class="flex border-b border-gray-200 mb-4">
-            <button onclick="proApp.setClientView('workout')" class="tab-button p-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentClientView === 'workout' || this.currentClientView === 'workoutImport' ? 'active' : ''}">Allenamento</button>
-            <button onclick="proApp.setClientView('diet')" class="tab-button p-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentClientView === 'diet' || this.currentClientView === 'dietImport' ? 'active' : ''}">Dieta</button>
-            <button onclick="proApp.setClientView('measurements')" class="tab-button p-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentClientView === 'measurements' ? 'active' : ''}">Misure</button>
-            <button onclick="proApp.setClientView('password')" class="tab-button p-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentClientView === 'password' ? 'active' : ''}">Password</button>
-            <button onclick="proApp.setClientView('advanced')" class="tab-button p-4 text-gray-600 hover:text-indigo-600 transition duration-150 ${this.currentClientView === 'advanced' ? 'active' : ''}">Avanzate (JSON)</button>
+            <button onclick="proApp.setClientView('workout')" class="tab-button p-4 text-gray-600 hover:text-[#D4AF37] transition duration-150 ${this.currentClientView === 'workout' || this.currentClientView === 'workoutImport' ? 'active' : ''}">Allenamento</button>
+            <button onclick="proApp.setClientView('diet')" class="tab-button p-4 text-gray-600 hover:text-[#D4AF37] transition duration-150 ${this.currentClientView === 'diet' || this.currentClientView === 'dietImport' ? 'active' : ''}">Dieta</button>
+            <button onclick="proApp.setClientView('measurements')" class="tab-button p-4 text-gray-600 hover:text-[#D4AF37] transition duration-150 ${this.currentClientView === 'measurements' ? 'active' : ''}">Misure</button>
+            <button onclick="proApp.setClientView('password')" class="tab-button p-4 text-gray-600 hover:text-[#D4AF37] transition duration-150 ${this.currentClientView === 'password' ? 'active' : ''}">Password</button>
+            <button onclick="proApp.setClientView('advanced')" class="tab-button p-4 text-gray-600 hover:text-[#D4AF37] transition duration-150 ${this.currentClientView === 'advanced' ? 'active' : ''}">Avanzate (JSON)</button>
         </div>
 
         <div id="edit-client-content" class="flex-grow overflow-y-auto">
@@ -1039,18 +1039,18 @@ const proApp = {
                     <div class="flex justify-between items-center">
                         <span class="font-semibold">${w.exercise?.toUpperCase() || 'N/D'}</span>
                         <div class="flex space-x-2">
-                            <button onclick="proApp.startEditingWorkout(${w.id})" class="text-blue-500 hover:text-blue-700 transition">Modifica</button>
+                            <button onclick="proApp.startEditingWorkout(${w.id})" class="text-[#800020] hover:text-[#9a1f3a] transition">Modifica</button>
                             <button onclick="proApp.removeClientWorkout('${uid}', ${w.id})" class="text-red-500 hover:text-red-700 transition">Rimuovi</button>
                         </div>
                     </div>
                     <p class="text-xs text-gray-600">GIORNO: ${w.day} | SERIE: ${w.sets} | REP: ${w.reps} | CARICO: ${w.load}</p>
                 </li>`;
             }).join('');
-            return `<div class="mb-4"><h4 class="text-xl font-bold text-indigo-600">${day}</h4><ul class="space-y-1">${exercisesHTML}</ul></div>`;
+            return `<div class="mb-4"><h4 class="text-xl font-bold text-[#D4AF37]">${day}</h4><ul class="space-y-1">${exercisesHTML}</ul></div>`;
         }).join('');
 
         return `<div class="p-4 space-y-6">
-            <h2 class="text-2xl font-bold text-indigo-600">PIANO DI ALLENAMENTO</h2>
+            <h2 class="text-2xl font-bold text-[#D4AF37]">PIANO DI ALLENAMENTO</h2>
             <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
                 <h3 class="text-xl font-bold mb-4">ESERCIZI (${(clientState.workout || []).length})</h3>
                 <div class="space-y-4">${workoutDaysHTML || `<p class="text-gray-500 p-2">Nessun esercizio nel piano.</p>`}</div>
@@ -1118,7 +1118,7 @@ const proApp = {
                     <div class="flex justify-between items-center">
                         <span class="font-semibold">${meal.category}: ${meal.description}</span>
                         <div class="flex space-x-2">
-                            <button onclick="proApp.startEditingDietMeal(${dayIndex}, ${mealIndex})" class="text-blue-500 hover:text-blue-700 transition">Modifica</button>
+                            <button onclick="proApp.startEditingDietMeal(${dayIndex}, ${mealIndex})" class="text-[#800020] hover:text-[#9a1f3a] transition">Modifica</button>
                             <button onclick="proApp.removeClientDietMeal('${uid}', '${dayPlan.day}', ${mealIndex})" class="text-red-500 hover:text-red-700 transition">Rimuovi</button>
                         </div>
                     </div>
@@ -1126,11 +1126,11 @@ const proApp = {
                 </li>`;
             }).join('');
             const totalDayCalories = dayPlan.meals.reduce((sum, m) => sum + m.calories, 0);
-            return `<div class="mb-4"><h4 class="text-xl font-bold text-indigo-600">${dayPlan.day} (${totalDayCalories} KCAL)</h4><ul class="space-y-1">${mealsHTML}</ul></div>`;
+            return `<div class="mb-4"><h4 class="text-xl font-bold text-[#D4AF37]">${dayPlan.day} (${totalDayCalories} KCAL)</h4><ul class="space-y-1">${mealsHTML}</ul></div>`;
         }).join('');
 
         return `<div class="p-4 space-y-6">
-            <h2 class="text-2xl font-bold text-indigo-600">PIANO DIETA (${clientState.dietPlan?.targetCalories || 0} KCAL OBIETTIVO)</h2>
+            <h2 class="text-2xl font-bold text-[#D4AF37]">PIANO DIETA (${clientState.dietPlan?.targetCalories || 0} KCAL OBIETTIVO)</h2>
             <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
                 <h3 class="text-xl font-bold mb-4">PIANO DIETA SETTIMANALE (${(clientState.dietPlan?.plan || []).length} giorni)</h3>
                 <div class="space-y-4">${dietPlanHTML || `<p class="text-gray-500 p-2">Nessun piano dieta salvato.</p>`}</div>
@@ -1171,7 +1171,7 @@ const proApp = {
             const calc = log.calculated || {};
             return `<li class="py-3 border-b last:border-b-0 bg-white p-3 rounded-lg shadow-sm">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="text-lg font-bold text-indigo-600">${log.date}</span>
+                    <span class="text-lg font-bold text-[#D4AF37]">${log.date}</span>
                     <button onclick="proApp.removeClientMeasurement('${uid}', ${log.id})" class="text-red-500 hover:text-red-700 transition">ELIMINA</button>
                 </div>
                 <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
@@ -1185,7 +1185,7 @@ const proApp = {
         }).join('');
 
         return `<div class="p-4 space-y-6">
-            <h2 class="text-2xl font-bold text-indigo-600">MISURE E PROGRESSI</h2>
+            <h2 class="text-2xl font-bold text-[#D4AF37]">MISURE E PROGRESSI</h2>
             <h3 class="text-xl font-bold mb-4">SALVA NUOVA MISURA</h3>
             <form onsubmit="event.preventDefault(); proApp.addClientMeasurement('${uid}', this.weight.value, this.height.value, this.age.value, this.gender.value, this.waist.value, this.hips.value, this.chest.value, this.bicep.value, this.thigh.value); this.reset();" class="space-y-4 bg-white p-4 rounded-lg shadow">
                 <div class="grid grid-cols-2 gap-4">
@@ -1228,7 +1228,7 @@ const proApp = {
     // ----------- Password Change Dashboard -----------
     const renderPasswordDashboard = () => {
         return `<div class="p-4 space-y-6">
-            <h2 class="text-2xl font-bold text-indigo-600">CAMBIO PASSWORD UTENTE</h2>
+            <h2 class="text-2xl font-bold text-[#D4AF37]">CAMBIO PASSWORD UTENTE</h2>
             <p class="text-sm text-gray-600 mb-4 no-uppercase">Modifica la password per questo utente. L'utente dovrà utilizzare la nuova password per accedere.</p>
             
             <form onsubmit="event.preventDefault(); proApp.changeClientPassword('${uid}', this.newPassword.value, this.confirmPassword.value); this.reset();" class="space-y-4 bg-white p-4 rounded-lg shadow">
