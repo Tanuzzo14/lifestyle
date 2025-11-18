@@ -615,10 +615,24 @@ const proApp = {
     ).join('');
 
     return `<div class="p-6">
-      <h2 class="text-2xl font-semibold text-gray-800 mb-4">Creazione Piano di Allenamento</h2>
-      <p class="text-sm text-gray-600 mb-6">Crea un piano di allenamento personalizzato per un utente utilizzando l'intelligenza artificiale.</p>
+      <h2 class="text-2xl font-semibold text-gray-800 mb-4">Creazione Piano di Allenamento Professionale</h2>
+      <p class="text-sm text-gray-600 mb-6">Crea un piano di allenamento personalizzato basato su metodologie scientifiche avanzate.</p>
       
-      <form onsubmit="event.preventDefault(); proApp.createWorkoutPlanForClient(this.clientUid.value, this.workoutGoal.value, this.workoutFrequency.value, this.exerciseLocation.value, this.additionalNotes.value);" class="space-y-6">
+      <form onsubmit="event.preventDefault(); proApp.createWorkoutPlanForClient(
+        this.clientUid.value, 
+        this.workoutGoal.value, 
+        this.workoutFrequency.value, 
+        this.exerciseLocation.value,
+        this.workType.value,
+        this.experienceLevel.value,
+        this.injuries.value,
+        this.workHours.value,
+        this.stressLevel.value,
+        this.sleepHours.value,
+        this.painAreas.value,
+        this.mobilityNeeds.value,
+        this.additionalNotes.value
+      );" class="space-y-6">
         
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h3 class="text-lg font-bold text-blue-800 mb-3">Seleziona Utente</h3>
@@ -629,7 +643,7 @@ const proApp = {
         </div>
 
         <div class="bg-white border border-gray-200 rounded-lg p-4">
-          <h3 class="text-lg font-bold text-gray-800 mb-3">Parametri del Piano</h3>
+          <h3 class="text-lg font-bold text-gray-800 mb-3">Obiettivi e Parametri Base</h3>
           
           <div class="space-y-4">
             <div>
@@ -642,6 +656,7 @@ const proApp = {
                 <option value="dimagrimento">Dimagrimento</option>
                 <option value="resistenza">Resistenza</option>
                 <option value="mantenimento">Mantenimento</option>
+                <option value="funzionale">Funzionale/Performance</option>
               </select>
             </div>
 
@@ -667,17 +682,85 @@ const proApp = {
                 <option value="outdoor">All'aperto</option>
               </select>
             </div>
+          </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 class="text-lg font-bold text-gray-800 mb-3">Profilo e Stile di Vita</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Tipo di Lavoro</label>
+              <select name="workType" required class="w-full p-3 border rounded-lg">
+                <option value="">-- Seleziona tipo --</option>
+                <option value="sedentario">Sedentario (ufficio, scrivania)</option>
+                <option value="moderato">Moderatamente Attivo</option>
+                <option value="fisico_pesante">Lavoro Fisico Pesante</option>
+              </select>
+            </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Note Aggiuntive (opzionale)</label>
-              <textarea name="additionalNotes" rows="4" class="w-full p-3 border rounded-lg" placeholder="Es: Focus su gambe, evitare esercizi per la schiena bassa, preferenza per superserie..."></textarea>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Livello di Esperienza</label>
+              <select name="experienceLevel" required class="w-full p-3 border rounded-lg">
+                <option value="">-- Seleziona livello --</option>
+                <option value="principiante">Principiante/Neofita</option>
+                <option value="intermedio">Intermedio</option>
+                <option value="avanzato">Avanzato/Esperto</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Ore di Lavoro Giornaliere</label>
+              <input type="number" name="workHours" min="0" max="16" step="0.5" value="8" class="w-full p-3 border rounded-lg" placeholder="8">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Livello di Stress</label>
+              <select name="stressLevel" required class="w-full p-3 border rounded-lg">
+                <option value="">-- Seleziona livello --</option>
+                <option value="basso">Basso</option>
+                <option value="moderato">Moderato</option>
+                <option value="alto">Alto</option>
+                <option value="molto_alto">Molto Alto</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Ore di Sonno per Notte</label>
+              <input type="number" name="sleepHours" min="3" max="12" step="0.5" value="7" class="w-full p-3 border rounded-lg" placeholder="7">
             </div>
           </div>
         </div>
 
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 class="text-lg font-bold text-gray-800 mb-3">Condizioni Fisiche e Limitazioni</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Infortuni o Limitazioni Fisiche</label>
+              <textarea name="injuries" rows="2" class="w-full p-3 border rounded-lg" placeholder="Es: Dolore al ginocchio sinistro, tendinite spalla destra, ernia discale L5-S1..."></textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Zone con Dolore/Fastidio</label>
+              <textarea name="painAreas" rows="2" class="w-full p-3 border rounded-lg" placeholder="Es: Cervicale, schiena bassa, spalle, ginocchia..."></textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Esigenze di Mobilità Specifiche</label>
+              <textarea name="mobilityNeeds" rows="2" class="w-full p-3 border rounded-lg" placeholder="Es: Scarsa mobilità caviglia, rigidità toracica, limitazione ROM spalla..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 class="text-lg font-bold text-gray-800 mb-3">Note Aggiuntive</h3>
+          <textarea name="additionalNotes" rows="4" class="w-full p-3 border rounded-lg" placeholder="Es: Preferenze per tipo di esercizi, focus particolare su gruppi muscolari, esperienza pregressa con metodologie specifiche..."></textarea>
+        </div>
+
         <div class="flex justify-end space-x-3">
           <button type="button" onclick="proApp.setMainView('clients')" class="bg-gray-200 hover:bg-gray-300 px-6 py-3 rounded-lg text-gray-800 font-medium">Annulla</button>
-          <button type="submit" class="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-medium shadow-lg">Genera Piano con AI</button>
+          <button type="submit" class="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-medium shadow-lg">Genera Piano Professionale con AI</button>
         </div>
       </form>
     </div>`;
@@ -2252,7 +2335,7 @@ ${textContent.substring(0, 15000)}`;
   // PLAN CREATION FUNCTIONS
   // ============================================
   
-  async createWorkoutPlanForClient(clientUid, workoutGoal, workoutFrequency, exerciseLocation, additionalNotes) {
+  async createWorkoutPlanForClient(clientUid, workoutGoal, workoutFrequency, exerciseLocation, workType, experienceLevel, injuries, workHours, stressLevel, sleepHours, painAreas, mobilityNeeds, additionalNotes) {
     if (!clientUid) {
       alert('Seleziona un utente.');
       return;
@@ -2291,41 +2374,132 @@ ${textContent.substring(0, 15000)}`;
 
     showSpinner();
     try {
-      const prompt = `Sei un personal trainer esperto. Crea un piano di allenamento completo e dettagliato.
+      const prompt = `Sei un personal trainer esperto specializzato in allenamento funzionale e metodologie scientifiche avanzate (Joint by Joint, periodizzazione, approccio Bosch per forza-coordinazione).
 
-Dati dell'utente:
+DATI ANTROPOMETRICI E ANAGRAFICI:
 - Peso: ${weight} kg
 - Altezza: ${height} cm
 - Età: ${age} anni
 - Sesso: ${gender}
 - Circonferenze: Vita ${waist} cm, Fianchi ${hips} cm, Petto ${chest} cm, Braccio ${bicep} cm, Coscia ${thigh} cm
+- BMI calcolato: ${(weight / ((height/100) ** 2)).toFixed(1)}
 
-Parametri del piano:
-- Obiettivo: ${workoutGoal}
-- Frequenza: ${workoutFrequency} giorni/settimana
+PROFILO STILE DI VITA:
+- Tipo di lavoro: ${workType}
+- Ore di lavoro giornaliere: ${workHours}
+- Livello di stress: ${stressLevel}
+- Ore di sonno: ${sleepHours} ore/notte
+- Livello di esperienza: ${experienceLevel}
+
+OBIETTIVO E PARAMETRI:
+- Obiettivo principale: ${workoutGoal}
+- Frequenza allenamento: ${workoutFrequency} giorni/settimana
 - Luogo: ${exerciseLocation}
+
+CONDIZIONI FISICHE:
+${injuries ? `- Infortuni/Limitazioni: ${injuries}` : '- Nessun infortunio segnalato'}
+${painAreas ? `- Zone con dolore: ${painAreas}` : '- Nessun dolore segnalato'}
+${mobilityNeeds ? `- Esigenze mobilità: ${mobilityNeeds}` : '- Nessuna limitazione di mobilità segnalata'}
 ${additionalNotes ? `- Note aggiuntive: ${additionalNotes}` : ''}
 
-Crea un piano di allenamento personalizzato che:
-1. Sia adatto al livello dell'utente basato sulle sue misure
-2. Rispetti l'obiettivo specificato (${workoutGoal})
-3. Sia strutturato per ${workoutFrequency} giorni a settimana
-4. Utilizzi esercizi appropriati per il luogo specificato (${exerciseLocation})
-5. Includa serie, ripetizioni e carichi suggeriti
-6. Sia progressivo e sicuro
+METODOLOGIA DA SEGUIRE:
+
+1. ADATTAMENTO PER ETÀ E LIVELLO:
+${age < 30 && experienceLevel === 'avanzato' ? '- Utente giovane esperto: volume elevato, multiarticolari complessi, variazioni avanzate' : ''}
+${age < 30 && experienceLevel === 'principiante' ? '- Utente giovane neofita: focus su apprendimento tecnico, controllo motorio, pattern di movimento base' : ''}
+${age >= 30 && age < 40 ? '- Utente 30-40 anni: multiarticolari funzionali, qualità su quantità, tempo sotto tensione' : ''}
+${age >= 40 ? '- Utente over 40: volume moderato, attenzione tendini e recupero, mobilità prioritaria, ridurre impatti' : ''}
+
+2. FREQUENZA CONSIGLIATA (basata su tipo lavoro):
+${workType === 'fisico_pesante' ? '- Lavoro fisico: 2-3 allenamenti/sett, durata 60-90 min' : ''}
+${workType === 'sedentario' ? '- Lavoro sedentario: 4-5 allenamenti/sett, durata 75-120 min, priorità mobilità' : ''}
+
+3. STRUTTURA DELLA SEDUTA (ordine metodologico):
+   a) Rullo/massaggio miofasciale: 5 min (5-10 passaggi per distretto)
+   b) Stretching statico: 30 sec per distretto (focus retrazioni/tensioni)
+   c) Mobilità e attivazione dinamica: 10-15 min
+      - Mobilità allo specchio: ginocchia al petto, talloni ai glutei, slanci 3D
+      - Aperture I-T-Y spalle, rotazioni braccia, skip laterali
+      - Attivazione preventiva: cuffia rotatori 1×20, serrato scapolare, plank
+   d) Potenza/Velocità (2-3 volte/sett):
+      - Lanci palla medica: 2-3 serie da 10 reps
+      - Pliometria progressiva: 2-3 esercizi, 3-6 serie, 2-5 reps, recupero completo
+      - Sprint e cambi direzione per RFD
+   e) Forza (multiarticolari + complementari):
+      - Alternare bilaterali e unilaterali
+      - Vettori spinta/trazione bilanciati
+   f) Condizionamento metabolico: circuiti, HIIT, EMOM
+   g) Defaticamento: foam roller, respirazione diaframmatica, rilassamento
+
+4. APPROCCIO JOINT-BY-JOINT:
+   - Caviglia: mobilità sagittale (dorsiflessioni, camminata punte/talloni)
+   - Ginocchio: stabilità (split squat, controllo eccentrico, affondi 3D)
+   - Anca: mobilità multiplanare + forza (affondi 3D, hip opener, hip thrust)
+   - Lombare: stabilità (dead-bug, plank laterale, bird-dog)
+   - Toracica: mobilità (rotazioni, estensione foam roller, cat/cow)
+   - Scapole: stabilità (serrato, scapular push-up, Y-T-W)
+   - Gleno-omerale: mobilità + stabilità rotatori (alzate 3D, cuffia)
+
+5. PROGRESSIONE ESERCIZI:
+   ${experienceLevel === 'principiante' ? '- Step 1-2: Macchinari e bilaterali base per apprendimento motorio' : ''}
+   ${experienceLevel === 'intermedio' ? '- Step 2-3: Bilaterali liberi e introduzione monopodalici/unilaterali' : ''}
+   ${experienceLevel === 'avanzato' ? '- Step 3-4: Monopodalici, superfici instabili, esercizi reattivi' : ''}
+
+6. PARAMETRI ALLENANTI:
+   MULTIARTICOLARI: 3-5 serie, 5-12 reps, RPE 7-9, RIR 2-1, recupero 2-3 min
+   COMPLEMENTARI: 3-4 serie, 8-15 reps, RPE 8-10, RIR 1-0, recupero 60-90 sec
+   ISOLAMENTO: 2-3 serie, 12-20 reps, RPE 8-9, RIR 1-0, recupero 45-60 sec
+
+7. VOLUME SETTIMANALE PER GRUPPO MUSCOLARE:
+   ${experienceLevel === 'principiante' ? '- Principiante: 6-10 serie/gruppo/settimana, frequenza 2×' : ''}
+   ${experienceLevel === 'intermedio' ? '- Intermedio: 10-16 serie/gruppo/settimana, frequenza 2-3×' : ''}
+   ${experienceLevel === 'avanzato' ? '- Avanzato: 16-22 serie/gruppo/settimana, frequenza 2-3×' : ''}
+
+8. COORDINAZIONE E VARIABILITÀ (Approccio Bosch):
+   - Includere variazioni di velocità, superficie, direzione
+   - Ridurre "muscle slack" con controllo neuromuscolare
+   - Favorire trasferimento e adattabilità
+   - Evitare movimenti monotoni
+
+9. PREVENZIONE:
+   ${injuries ? '- PRIORITÀ: Considerare limitazioni e adattare esercizi di conseguenza' : ''}
+   ${painAreas ? '- ATTENZIONE: Evitare sovraccarico zone dolorose, includere esercizi correttivi' : ''}
+   ${mobilityNeeds ? '- FOCUS: Mobilità specifica per limitazioni indicate' : ''}
+   - Mobilità e attivazione in ogni seduta
+   - Stabilità scapolare e lombo-pelvica prioritaria
+
+10. RECUPERO (importante per età >40 e alto stress):
+    ${age >= 40 || stressLevel === 'alto' || stressLevel === 'molto_alto' ? '- Recupero esteso necessario, considerare giorni extra di riposo' : ''}
+    ${sleepHours < 7 ? '- ATTENZIONE: Sonno insufficiente, ridurre volume/intensità' : ''}
+
+GENERA un piano di allenamento COMPLETO e STRUTTURATO rispettando TUTTI i principi sopra.
+
+Per ogni giorno di allenamento, struttura la seduta con:
+- Fase di riscaldamento (mobilità, attivazione)
+- Fase centrale (forza/potenza)
+- Fase metabolica/condizionamento
+- Defaticamento
 
 Rispondi SOLO con un array JSON in questo formato esatto:
 [
   {
-    "day": "GIORNO A" o "LUNEDÌ" ecc,
-    "exercise": "NOME ESERCIZIO",
+    "day": "GIORNO 1" o "LUNEDÌ" ecc,
+    "exercise": "NOME ESERCIZIO CON FASE (es: RISCALDAMENTO: FOAM ROLLER DORSALE, FORZA: SQUAT, etc)",
     "sets": numero serie,
-    "reps": numero ripetizioni,
-    "load": "carico suggerito (es: 20KG, CORPO LIBERO, etc)"
+    "reps": numero ripetizioni o durata (es: per foam roller usa 10),
+    "load": "carico/modalità (es: 20KG, CORPO LIBERO, RPE 8, 30 SEC, etc)"
   }
 ]
 
-Tutti i testi devono essere in UPPERCASE. Genera un piano completo con almeno ${workoutFrequency * 4} esercizi.`;
+REGOLE FONDAMENTALI:
+- Tutti i testi in UPPERCASE
+- Includere TUTTE le fasi della seduta (riscaldamento, attivazione, forza, condizionamento, defaticamento)
+- Minimo ${Math.max(8, workoutFrequency * 6)} esercizi per seduta
+- Rispettare progressione e sicurezza
+- Bilanciare spinta/trazione
+- Includere lavoro unilaterale/monopodalico se livello adeguato
+- Considerare limitazioni fisiche indicate
+- Variare stimoli per adattamento neuromuscolare`;
 
       const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
