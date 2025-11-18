@@ -32,10 +32,30 @@
     </script>
 
     <style>
+        /* Luxury Color Palette */
+        :root {
+            --color-bordeaux: #800020;
+            --color-bordeaux-light: #9a1f3a;
+            --color-bordeaux-dark: #660019;
+            --color-gold: #D4AF37;
+            --color-gold-light: #F4D03F;
+            --color-gold-dark: #B8941D;
+            --color-black: #000000;
+            --color-night-blue: #191970;
+            --color-night-blue-light: #2a2a8a;
+            --color-forest-green: #228B22;
+            --color-forest-green-light: #2ea02e;
+            --color-forest-green-dark: #1a6b1a;
+            --color-purple: #6A0DAD;
+            --color-purple-light: #8B1BC4;
+            --color-white: #FFFFFF;
+            --color-gray-light: #F5F5F5;
+        }
+        
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            color: #1f2937;
+            background-color: var(--color-gray-light);
+            color: var(--color-black);
             text-transform: uppercase;
         }
         .container { max-width: 480px; }
@@ -1792,7 +1812,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
 
       function renderHypnogram(hypnogramData, totalSeconds) {
         if (!hypnogramData || hypnogramData.length === 0 || totalSeconds <= 0) return '';
-        const stageColors = { 'VEGLIA': 'bg-yellow-400', 'REM': 'bg-purple-500', 'LEGGERO': 'bg-sky-400', 'PROFONDO': 'bg-blue-700' };
+        const stageColors = { 'VEGLIA': 'bg-yellow-400', 'REM': 'bg-[#6A0DAD]', 'LEGGERO': 'bg-sky-400', 'PROFONDO': 'bg-[#191970]' };
         const segments = hypnogramData.map(segment => {
           const widthPercentage = (segment.duration / totalSeconds) * 100;
           return `<div class="${stageColors[segment.stage]} h-full" style="width: ${widthPercentage}%" title="${segment.stage} - ${Math.round(segment.duration / 60)} min"></div>`;
@@ -1804,13 +1824,13 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
       function renderNavbar() {
         if (!state.isAuthenticated) return '';
         const views = { summary: 'RIEPILOGO', habits: 'ABITUDINI', workout: 'ALLENAMENTO', diet: 'DIETA', measurements: 'MISURE' };
-        const navLinks = Object.keys(views).map(viewKey => `<button onclick="window.app.setView('${viewKey}')" class="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg transition ${state.view === viewKey ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}">${views[viewKey]}</button>`).join('');
-        return `<nav class="p-4 bg-white shadow-xl rounded-xl mb-6"><div class="flex justify-between items-center"><span class="text-xl font-bold text-blue-600">LIFEGROWTH</span><button onclick="window.app.toggleMenu()" class="md:hidden p-2 rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none">${state.isMenuOpen ? '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>' : '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>'}</button><div class="hidden md:flex items-center space-x-2">${navLinks}<button onclick="window.app.openChangePasswordModal()" class="px-3 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition">CAMBIA PASSWORD</button><button onclick="window.app.logout()" class="px-3 py-2 text-sm font-semibold text-red-600 hover:text-red-800 transition">LOGOUT</button></div></div><div id="mobile-menu" class="${state.isMenuOpen ? 'block' : 'hidden'} md:hidden mt-4 pt-4 border-t space-y-2">${navLinks}<button onclick="window.app.openChangePasswordModal()" class="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg text-gray-600 hover:bg-gray-50 transition">CAMBIA PASSWORD</button><button onclick="window.app.logout()" class="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg text-red-600 hover:bg-red-50 transition">LOGOUT</button></div></nav>`;
+        const navLinks = Object.keys(views).map(viewKey => `<button onclick="window.app.setView('${viewKey}')" class="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg transition ${state.view === viewKey ? 'bg-[#D4AF37] text-black shadow-md' : 'text-gray-600 hover:bg-gray-100'}">${views[viewKey]}</button>`).join('');
+        return `<nav class="p-4 bg-white shadow-xl rounded-xl mb-6"><div class="flex justify-between items-center"><span class="text-xl font-bold text-[#D4AF37]">LIFEGROWTH</span><button onclick="window.app.toggleMenu()" class="md:hidden p-2 rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none">${state.isMenuOpen ? '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>' : '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>'}</button><div class="hidden md:flex items-center space-x-2">${navLinks}<button onclick="window.app.openChangePasswordModal()" class="px-3 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition">CAMBIA PASSWORD</button><button onclick="window.app.logout()" class="px-3 py-2 text-sm font-semibold text-red-600 hover:text-red-800 transition">LOGOUT</button></div></div><div id="mobile-menu" class="${state.isMenuOpen ? 'block' : 'hidden'} md:hidden mt-4 pt-4 border-t space-y-2">${navLinks}<button onclick="window.app.openChangePasswordModal()" class="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg text-gray-600 hover:bg-gray-50 transition">CAMBIA PASSWORD</button><button onclick="window.app.logout()" class="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg text-red-600 hover:bg-red-50 transition">LOGOUT</button></div></nav>`;
       }
 
       function renderLogin() {
   const installButton = Auth.isPWAInstallAvailable() 
-    ? `<button onclick="window.app.installPWA()" class="w-full p-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 mt-4 flex items-center justify-center space-x-2">
+    ? `<button onclick="window.app.installPWA()" class="w-full p-3 bg-[#6A0DAD] text-white font-bold rounded-lg hover:bg-[#8B1BC4] mt-4 flex items-center justify-center space-x-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
         </svg>
@@ -1829,18 +1849,18 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
         <label class="block text-sm font-medium">PASSWORD</label>
         <input type="password" name="password" required class="w-full p-3 border rounded-lg">
       </div>
-      <button type="submit" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">ACCEDI</button>
+      <button type="submit" class="w-full p-3 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#F4D03F]">ACCEDI</button>
     </form>
     ${installButton}
     <p class="text-center mt-4 text-sm">NON HAI UN ACCOUNT?
-      <button onclick="window.app.setView('register')" class="text-blue-600 font-semibold">REGISTRATI</button>
+      <button onclick="window.app.setView('register')" class="text-[#D4AF37] font-semibold">REGISTRATI</button>
     </p>
   </div>`;
 }
 
 function renderRegister() {
   const installButton = Auth.isPWAInstallAvailable() 
-    ? `<button onclick="window.app.installPWA()" class="w-full p-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 mt-4 flex items-center justify-center space-x-2">
+    ? `<button onclick="window.app.installPWA()" class="w-full p-3 bg-[#6A0DAD] text-white font-bold rounded-lg hover:bg-[#8B1BC4] mt-4 flex items-center justify-center space-x-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
         </svg>
@@ -1866,11 +1886,11 @@ function renderRegister() {
           <option value="pro">Professionista della salute</option>
         </select>
       </div>
-      <button type="submit" class="w-full p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">REGISTRATI</button>
+      <button type="submit" class="w-full p-3 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#F4D03F]">REGISTRATI</button>
     </form>
     ${installButton}
     <p class="text-center mt-4 text-sm">HAI GIÀ UN ACCOUNT?
-      <button onclick="window.app.setView('login')" class="text-blue-600 font-semibold">ACCEDI</button>
+      <button onclick="window.app.setView('login')" class="text-[#D4AF37] font-semibold">ACCEDI</button>
     </p>
   </div>`;
 }
@@ -2019,7 +2039,7 @@ function renderRegister() {
             ? '<span class="text-green-600 font-bold">COMPLETATA</span>' 
             : '<span class="text-orange-500 font-bold">IN CORSO</span>';
         
-        return `<div class="card"><h2 class="text-2xl font-bold mb-4 text-blue-600">ABITUDINI (${state.data.habits.length})</h2><div class="mb-6"><h4 class="text-lg font-semibold text-gray-700">STATO GIORNALIERO: ${overallCompliance}</h4></div><div class="card mb-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">CHECKLIST</h3><ul>${habitsListHTML || `<p class="text-gray-500 p-2">Aggiungi le tue abitudini per iniziare il monitoraggio.</p>`}</ul></div><h3 class="text-xl font-bold mb-4">AGGIUNGI NUOVA ABITUDINE</h3><form onsubmit="event.preventDefault(); window.app.addHabit(this.description.value); this.reset();" class="space-y-4"><input type="text" name="description" required class="w-full p-3 border rounded-lg" placeholder="ES. SCRIVERE UN DIARIO"><button type="submit" class="w-full p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">AGGIUNGI</button></form></div>`;
+        return `<div class="card"><h2 class="text-2xl font-bold mb-4 text-[#800020]">ABITUDINI (${state.data.habits.length})</h2><div class="mb-6"><h4 class="text-lg font-semibold text-gray-700">STATO GIORNALIERO: ${overallCompliance}</h4></div><div class="card mb-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">CHECKLIST</h3><ul>${habitsListHTML || `<p class="text-gray-500 p-2">Aggiungi le tue abitudini per iniziare il monitoraggio.</p>`}</ul></div><h3 class="text-xl font-bold mb-4">AGGIUNGI NUOVA ABITUDINE</h3><form onsubmit="event.preventDefault(); window.app.addHabit(this.description.value); this.reset();" class="space-y-4"><input type="text" name="description" required class="w-full p-3 border rounded-lg" placeholder="ES. SCRIVERE UN DIARIO"><button type="submit" class="w-full p-3 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#F4D03F]">AGGIUNGI</button></form></div>`;
       }
 
       function renderWorkoutDashboard() {
@@ -2028,8 +2048,8 @@ function renderRegister() {
         
         const isCompleted = complianceToday.workout;
         const completeButton = isCompleted 
-            ? `<button disabled class="w-full p-3 bg-green-600 text-white font-bold rounded-lg mt-4 opacity-50 cursor-not-allowed">ALLENAMENTO COMPLETATO</button>`
-            : `<button onclick="window.app.markWorkoutCompleted()" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 mt-4">MARCA COME COMPLETATO</button>`;
+            ? `<button disabled class="w-full p-3 bg-[#228B22] text-white font-bold rounded-lg mt-4 opacity-50 cursor-not-allowed">ALLENAMENTO COMPLETATO</button>`
+            : `<button onclick="window.app.markWorkoutCompleted()" class="w-full p-3 bg-[#800020] text-white font-bold rounded-lg hover:bg-[#9a1f3a] mt-4">MARCA COME COMPLETATO</button>`;
             
         const workoutsByDay = state.data.workout.reduce((acc, w) => {
           if (!acc[w.day]) acc[w.day] = [];
@@ -2041,7 +2061,7 @@ function renderRegister() {
           const exercisesHTML = workoutsByDay[day].map(w => {
             if (state.editingWorkoutId === w.id) {
                 // Editing form for a single exercise
-                return `<li class="py-2 border-b last:border-b-0 text-sm bg-blue-50 p-2 rounded-lg mt-2">
+                return `<li class="py-2 border-b last:border-b-0 text-sm bg-[#ffe6ec] p-2 rounded-lg mt-2">
                     <form onsubmit="event.preventDefault(); window.app.updateWorkout(${w.id}, this.day.value, this.exercise.value, this.sets.value, this.reps.value, this.load.value);">
                         <div class="grid grid-cols-2 gap-2 mb-2">
                             <input type="text" name="day" value="${w.day}" placeholder="GIORNO" required class="w-full p-2 border rounded-lg text-xs">
@@ -2053,7 +2073,7 @@ function renderRegister() {
                             <input type="text" name="load" value="${w.load}" placeholder="CARICO" class="w-full p-2 border rounded-lg text-xs">
                         </div>
                         <div class="flex justify-between mt-2">
-                            <button type="submit" class="text-green-600 hover:text-green-800 font-semibold text-xs">SALVA</button>
+                            <button type="submit" class="text-[#228B22] hover:text-[#2ea02e] font-semibold text-xs">SALVA</button>
                             <button type="button" onclick="window.app.cancelEditingWorkout()" class="text-gray-500 hover:text-gray-700 text-xs">ANNULLA</button>
                         </div>
                     </form>
@@ -2064,10 +2084,10 @@ function renderRegister() {
             const weightDisplay = state.quickEditingWeightId === w.id
                 ? `<form onsubmit="event.preventDefault(); window.app.updateWeight(${w.id}, this.newLoad.value);" class="inline-flex items-center space-x-1">
                       <input type="text" name="newLoad" value="${w.load}" placeholder="CARICO" class="w-16 px-1 py-0.5 border rounded text-xs" autofocus>
-                      <button type="submit" class="text-green-600 hover:text-green-800 text-xs font-semibold">✓</button>
+                      <button type="submit" class="text-[#228B22] hover:text-[#2ea02e] text-xs font-semibold">✓</button>
                       <button type="button" onclick="window.app.cancelQuickEditWeight()" class="text-gray-500 hover:text-gray-700 text-xs">✕</button>
                    </form>`
-                : `<span class="cursor-pointer hover:bg-yellow-100 px-1 rounded" onclick="window.app.startQuickEditWeight(${w.id})" title="Clicca per modificare il carico">
+                : `<span class="cursor-pointer hover:bg-[#ffe6ec] px-1 rounded" onclick="window.app.startQuickEditWeight(${w.id})" title="Clicca per modificare il carico">
                       ${w.load}
                       <svg class="w-3 h-3 inline-block ml-0.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                    </span>`;
@@ -2076,14 +2096,14 @@ function renderRegister() {
                 <div class="flex justify-between items-center">
                     <span class="font-semibold">${w.exercise.toUpperCase()}</span>
                     <div class="flex space-x-2">
-                        <button onclick="window.app.startEditingWorkout(${w.id})" class="text-blue-500 hover:text-blue-700 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-7l4 4m-4-4l-9 9m9-9l9 9"></path></svg></button>
+                        <button onclick="window.app.startEditingWorkout(${w.id})" class="text-[#800020] hover:text-[#9a1f3a] transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-7l4 4m-4-4l-9 9m9-9l9 9"></path></svg></button>
                         <button onclick="window.app.removeWorkout(${w.id})" class="text-red-500 hover:text-red-700 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m10 0h-12"></path></svg></button>
                     </div>
                 </div>
                 <p class="text-xs text-gray-600">GIORNO: ${w.day} | SERIE: ${w.sets} | REP: ${w.reps} | CARICO: ${weightDisplay}</p>
             </li>`;
           }).join('');
-          return `<div class="daily-card"><h4 class="text-xl font-bold text-blue-600 mb-3">${day}</h4><ul class="space-y-1">${exercisesHTML}</ul></div>`;
+          return `<div class="daily-card"><h4 class="text-xl font-bold text-[#800020] mb-3">${day}</h4><ul class="space-y-1">${exercisesHTML}</ul></div>`;
         }).join('');
         
         const uploadedFilesHTML = state.data.uploadedWorkoutPlans.map(p => 
@@ -2109,20 +2129,20 @@ function renderRegister() {
                     <p class="text-sm text-gray-500 mb-4">ANTEPRIMA FILE</p>
                     ${contentDisplay}
                     <div class="flex justify-between mt-4">
-                        <a href="${state.viewingFile.dataUrl}" download="${state.viewingFile.name.toLowerCase()}" class="p-2 bg-green-500 text-white font-bold rounded-lg text-sm">SCARICA</a>
-                        <button onclick="window.app.setView('workoutImport'); window._tempTextContent='${isText ? btoa(unescape(encodeURIComponent(decodeBase64Text(state.viewingFile.dataUrl)))) : ''}'" class="p-2 bg-blue-500 text-white font-bold rounded-lg text-sm disabled:opacity-50" ${isText ? '' : 'disabled'}>IMPORTA TESTO</button>
+                        <a href="${state.viewingFile.dataUrl}" download="${state.viewingFile.name.toLowerCase()}" class="p-2 bg-[#228B22] text-white font-bold rounded-lg text-sm hover:bg-[#2ea02e]">SCARICA</a>
+                        <button onclick="window.app.setView('workoutImport'); window._tempTextContent='${isText ? btoa(unescape(encodeURIComponent(decodeBase64Text(state.viewingFile.dataUrl)))) : ''}'" class="p-2 bg-[#800020] text-white font-bold rounded-lg text-sm hover:bg-[#9a1f3a] disabled:opacity-50" ${isText ? '' : 'disabled'}>IMPORTA TESTO</button>
                         <button onclick="window.app.closeFileViewer()" class="p-2 bg-red-500 text-white font-bold rounded-lg text-sm">CHIUDI</button>
                     </div>
                 </div>
             </div>`;
         }
 
-        return `<div class="card">${fileViewerHTML}<h2 class="text-2xl font-bold mb-4 text-blue-600">PIANO DI ALLENAMENTO</h2>${completeButton}<div class="card mt-6 mb-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">ESERCIZI (${state.data.workout.length})</h3>${workoutDaysHTML ? `<div class="horizontal-scroll-container">${workoutDaysHTML}</div>` : `<p class="text-gray-500 p-2">Nessun esercizio nel piano. Aggiungine uno sotto.</p>`}<button onclick="window.app.clearWorkoutPlan()" class="mt-4 p-2 w-full text-sm bg-red-100 text-red-700 font-semibold rounded-lg hover:bg-red-200">CANCELLA TUTTO</button></div> <div class="card mt-6 bg-gradient-to-r from-purple-100 to-blue-100 border-2 border-purple-300"><h3 class="text-xl font-bold mb-2 text-purple-700">✨ CREA CON L'IA</h3><p class="text-sm text-gray-700 mb-3 no-uppercase">Genera un piano di allenamento personalizzato per mantenimento e tonificazione muscolare basato sulle tue misure.</p><button onclick="window.app.createAIWorkoutPlan()" class="w-full p-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold rounded-lg hover:from-purple-700 hover:to-blue-700 shadow-lg">CREA IL TUO PIANO CON L'IA</button></div> <h3 class="text-xl font-bold mb-4">AGGIUNGI ESERCIZIO</h3><form onsubmit="event.preventDefault(); window.app.addWorkout(this.day.value, this.exercise.value, this.sets.value, this.reps.value, this.load.value); this.reset();" class="space-y-2"><div class="grid grid-cols-2 gap-2"><input type="text" name="day" placeholder="GIORNO (ES. A, B)" required class="w-full p-3 border rounded-lg"><input type="text" name="exercise" placeholder="NOME ESERCIZIO" required class="w-full p-3 border rounded-lg"></div><div class="grid grid-cols-3 gap-2"><input type="number" name="sets" placeholder="SERIE" class="w-full p-3 border rounded-lg"><input type="number" name="reps" placeholder="REP" class="w-full p-3 border rounded-lg"><input type="text" name="load" placeholder="CARICO (KG/N/D)" class="w-full p-3 border rounded-lg"></div><button type="submit" class="w-full p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 mt-4">AGGIUNGI</button></form><div class="card mt-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">CARICA PIANO / FILE</h3><input type="file" onchange="window.app.uploadWorkoutFile(event)" accept=".pdf,.doc,.docx,.txt,.json" class="w-full p-3 border rounded-lg bg-white text-gray-700 text-sm"><button onclick="window.app.setView('workoutImport')" class="mt-2 p-3 w-full bg-blue-100 text-blue-700 font-bold rounded-lg hover:bg-blue-200">INCOLLA TESTO / IMPORTA</button></div><div class="card mt-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">FILE CARICATI (${state.data.uploadedWorkoutPlans.length})</h3><ul>${uploadedFilesHTML || `<p class="text-gray-500 p-2 text-sm">Nessun file caricato.</p>`}</ul></div></div>`;
+        return `<div class="card">${fileViewerHTML}<h2 class="text-2xl font-bold mb-4 text-[#800020]">PIANO DI ALLENAMENTO</h2>${completeButton}<div class="card mt-6 mb-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">ESERCIZI (${state.data.workout.length})</h3>${workoutDaysHTML ? `<div class="horizontal-scroll-container">${workoutDaysHTML}</div>` : `<p class="text-gray-500 p-2">Nessun esercizio nel piano. Aggiungine uno sotto.</p>`}<button onclick="window.app.clearWorkoutPlan()" class="mt-4 p-2 w-full text-sm bg-red-100 text-red-700 font-semibold rounded-lg hover:bg-red-200">CANCELLA TUTTO</button></div> <div class="card mt-6 bg-gradient-to-r from-[#ffe6ec] to-[#ffd9e3] border-2 border-[#800020]"><h3 class="text-xl font-bold mb-2 text-[#800020]">✨ CREA CON L'IA</h3><p class="text-sm text-gray-700 mb-3 no-uppercase">Genera un piano di allenamento personalizzato per mantenimento e tonificazione muscolare basato sulle tue misure.</p><button onclick="window.app.createAIWorkoutPlan()" class="w-full p-3 bg-gradient-to-r from-[#800020] to-[#9a1f3a] text-white font-bold rounded-lg hover:from-[#9a1f3a] hover:to-[#a62e4a] shadow-lg">CREA IL TUO PIANO CON L'IA</button></div> <h3 class="text-xl font-bold mb-4">AGGIUNGI ESERCIZIO</h3><form onsubmit="event.preventDefault(); window.app.addWorkout(this.day.value, this.exercise.value, this.sets.value, this.reps.value, this.load.value); this.reset();" class="space-y-2"><div class="grid grid-cols-2 gap-2"><input type="text" name="day" placeholder="GIORNO (ES. A, B)" required class="w-full p-3 border rounded-lg"><input type="text" name="exercise" placeholder="NOME ESERCIZIO" required class="w-full p-3 border rounded-lg"></div><div class="grid grid-cols-3 gap-2"><input type="number" name="sets" placeholder="SERIE" class="w-full p-3 border rounded-lg"><input type="number" name="reps" placeholder="REP" class="w-full p-3 border rounded-lg"><input type="text" name="load" placeholder="CARICO (KG/N/D)" class="w-full p-3 border rounded-lg"></div><button type="submit" class="w-full p-3 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#F4D03F] mt-4">AGGIUNGI</button></form><div class="card mt-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">CARICA PIANO / FILE</h3><input type="file" onchange="window.app.uploadWorkoutFile(event)" accept=".pdf,.doc,.docx,.txt,.json" class="w-full p-3 border rounded-lg bg-white text-gray-700 text-sm"><button onclick="window.app.setView('workoutImport')" class="mt-2 p-3 w-full bg-[#ffe6ec] text-[#800020] font-bold rounded-lg hover:bg-[#ffd9e3]">INCOLLA TESTO / IMPORTA</button></div><div class="card mt-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">FILE CARICATI (${state.data.uploadedWorkoutPlans.length})</h3><ul>${uploadedFilesHTML || `<p class="text-gray-500 p-2 text-sm">Nessun file caricato.</p>`}</ul></div></div>`;
       }
       
       function renderWorkoutImport() {
         // ... (function body for renderWorkoutImport is here, unchanged)
-        return `<div class="card"><h2 class="text-2xl font-bold mb-4 text-blue-600">IMPORTA PIANO ALLENAMENTO</h2><p class="mb-4 text-gray-700 no-uppercase">Incolla il tuo piano di allenamento qui. Se usi Excel o Google Sheet esporta il file in csv e poi copialo qui!</p><textarea id="workout-import-area" class="w-full p-4 border rounded-lg h-64 font-mono text-sm no-uppercase" placeholder="INCOLLA QUI IL TESTO DEL TUO PIANO..."></textarea><button onclick="window.app.importWorkoutPlan(document.getElementById('workout-import-area').value)" class="w-full p-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 mt-4">IMPORTA PIANO</button><button onclick="window.app.setView('workout')" class="w-full p-3 bg-gray-300 text-gray-800 font-bold rounded-lg hover:bg-gray-400 mt-2">ANNULLA</button></div>`;
+        return `<div class="card"><h2 class="text-2xl font-bold mb-4 text-[#800020]">IMPORTA PIANO ALLENAMENTO</h2><p class="mb-4 text-gray-700 no-uppercase">Incolla il tuo piano di allenamento qui. Se usi Excel o Google Sheet esporta il file in csv e poi copialo qui!</p><textarea id="workout-import-area" class="w-full p-4 border rounded-lg h-64 font-mono text-sm no-uppercase" placeholder="INCOLLA QUI IL TESTO DEL TUO PIANO..."></textarea><button onclick="window.app.importWorkoutPlan(document.getElementById('workout-import-area').value)" class="w-full p-3 bg-[#800020] text-white font-bold rounded-lg hover:bg-[#9a1f3a] mt-4">IMPORTA PIANO</button><button onclick="window.app.setView('workout')" class="w-full p-3 bg-gray-300 text-gray-800 font-bold rounded-lg hover:bg-gray-400 mt-2">ANNULLA</button></div>`;
       }
 
       function renderDietDashboard() {
