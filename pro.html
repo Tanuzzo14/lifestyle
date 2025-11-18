@@ -10,10 +10,33 @@
     body { font-family: 'Inter', sans-serif; }
     .client-table th, .client-table td { padding: 1rem 1.5rem; }
     .client-table th { border-bottom: 2px solid #e5e7eb; }
-    .client-card { transition: transform 0.2s, box-shadow 0.2s; }
+    .client-card { transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease; }
     .client-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); }
+    .tab-button { transition: color 0.3s ease, border-bottom 0.3s ease; }
     .tab-button.active { border-bottom: 3px solid #D4AF37; color: #D4AF37; font-weight: 600; }
+    .main-tab-button { transition: color 0.3s ease, border-bottom 0.3s ease; }
     .main-tab-button.active { border-bottom: 3px solid #D4AF37; color: #D4AF37; font-weight: 600; }
+    
+    /* Smooth transitions for all buttons */
+    button {
+        transition: all 0.3s ease;
+    }
+    
+    /* Smooth transitions for all links and interactive text */
+    a {
+        transition: color 0.3s ease, background-color 0.3s ease, opacity 0.3s ease;
+    }
+    
+    /* Smooth transitions for input fields */
+    input, textarea, select {
+        transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+    }
+    
+    input:focus, textarea:focus, select:focus {
+        outline: none;
+        border-color: #D4AF37;
+        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+    }
     
     /* Drag and drop styles */
     .drop-zone {
@@ -21,7 +44,7 @@
       border-radius: 12px;
       padding: 3rem;
       text-align: center;
-      transition: all 0.3s;
+      transition: all 0.3s ease;
       cursor: pointer;
     }
     .drop-zone:hover {
@@ -33,7 +56,7 @@
       background-color: #eef2ff;
     }
     .file-item {
-      transition: all 0.2s;
+      transition: all 0.3s ease;
     }
     .file-item:hover {
       background-color: #f8fafc;

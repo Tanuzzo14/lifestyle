@@ -185,13 +185,44 @@
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.06);
             padding: 1.5rem;
             border: 2px solid #e5e7eb;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
         }
         
         .daily-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
             border-color: #2563eb;
+        }
+        
+        /* Smooth transitions for all buttons */
+        button {
+            transition: all 0.3s ease;
+        }
+        
+        /* Smooth transitions for all links and interactive text */
+        a, .cursor-pointer {
+            transition: color 0.3s ease, background-color 0.3s ease, opacity 0.3s ease;
+        }
+        
+        /* Smooth transitions for input fields */
+        input, textarea, select {
+            transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--color-gold);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+        }
+        
+        /* Smooth transitions for cards */
+        .card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 8px -1px rgba(0,0,0,0.15), 0 3px 5px -2px rgba(0,0,0,0.08);
         }
         
         @media (min-width: 640px) {
