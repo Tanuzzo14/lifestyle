@@ -34,7 +34,7 @@ The issue occurred in the following sequence:
 
 1. **Inconsistent error format**: When Gemini API returned errors, the response format varied and might not include an `error` field
 2. **Failed JSON parsing**: The JavaScript's `response.json()` call would fail if the response was malformed or in an unexpected format
-3. **Incorrect model name**: The `config.php.example` specified `gemini-2.0-flash` which may not exist or be available yet
+3. **Incorrect model name**: The `config.php.example` specified `gemini-2.0-flash-lite` which may not exist or be available yet
 
 ## Solution Implemented
 
@@ -83,11 +83,11 @@ This ensures that:
 
 ### 2. Updated Model Name in config.php.example
 
-Changed the model from `gemini-2.0-flash` to `gemini-1.5-flash`:
+Changed the model from `gemini-2.0-flash-lite` to `gemini-1.5-flash`:
 
 ```php
 // Use gemini-1.5-flash or gemini-pro as the model
-// Note: gemini-2.0-flash may not be available yet - use gemini-1.5-flash instead
+// Note: gemini-2.0-flash-lite may not be available yet - use gemini-1.5-flash instead
 define('GEMINI_API_URL', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent');
 ```
 
@@ -150,7 +150,7 @@ Error: Impossibile standardizzare il piano con Gemini: Method not allowed for th
 
 ### Common Causes of 405 Errors
 
-1. **Incorrect model name**: Using `gemini-2.0-flash` when it doesn't exist
+1. **Incorrect model name**: Using `gemini-2.0-flash-lite` when it doesn't exist
 2. **Wrong API endpoint**: Using the wrong base URL or API version
 3. **Invalid API version**: Using `v1` instead of `v1beta` or vice versa
 4. **Model not enabled**: The model might not be available for your API key

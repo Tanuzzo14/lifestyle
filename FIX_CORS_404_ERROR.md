@@ -21,7 +21,7 @@ net::ERR_FAILED 404 (Not Found)
 
 The main issue was using an **incorrect Gemini model name**:
 - **Wrong**: `gemini-2.5-flash` (this model doesn't exist)
-- **Also wrong**: `gemini-2.0-flash` (this model also doesn't exist yet)
+- **Also wrong**: `gemini-2.0-flash-lite` (this model also doesn't exist yet)
 - **Correct**: `gemini-1.5-flash` (this is the current available model)
 
 The CORS error was a secondary symptom - when the API endpoint returns 404, it may not include proper CORS headers, causing the CORS error to appear first in the browser console.
@@ -32,7 +32,7 @@ Updated `config.js` to use the correct Gemini model name:
 
 ```javascript
 // Before (incorrect)
-let GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+let GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent';
 
 // After (correct)
 let GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
@@ -46,7 +46,7 @@ As of now, the available Gemini models are:
 - **`gemini-1.5-pro`** - More capable, better for complex tasks
 - **`gemini-pro`** - Earlier version, still supported
 
-**Note**: Models like `gemini-2.0-flash` and `gemini-2.5-flash` do not exist yet and will cause 404 errors.
+**Note**: Models like `gemini-2.0-flash-lite` and `gemini-2.5-flash` do not exist yet and will cause 404 errors.
 
 ## How to Configure
 

@@ -112,7 +112,7 @@ nano config.php
 ```php
 <?php
 define('GEMINI_API_KEY', 'LA_TUA_CHIAVE_API_QUI');
-define('GEMINI_API_URL', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent');
+define('GEMINI_API_URL', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent');
 ?>
 ```
 

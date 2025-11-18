@@ -2,7 +2,7 @@
 
 ## Panoramica
 
-Questa integrazione utilizza l'API di Google Gemini (gemini-2.0-flash) per standardizzare automaticamente tutti i formati di file importati nel sistema Lifestyle Designer, convertendoli nel formato JSON utilizzato dall'applicazione.
+Questa integrazione utilizza l'API di Google Gemini (gemini-2.0-flash-lite) per standardizzare automaticamente tutti i formati di file importati nel sistema Lifestyle Designer, convertendoli nel formato JSON utilizzato dall'applicazione.
 
 ## Funzionalità Implementate
 
@@ -158,8 +158,8 @@ Client (Browser) → gemini_proxy.php (Server) → Google Gemini API
 4. **Validazione Server-Side**: Possibilità di aggiungere autenticazione e rate limiting
 
 ### Modello Utilizzato
-- **Modello**: `gemini-2.0-flash`
-- **API Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`
+- **Modello**: `gemini-2.0-flash-lite`
+- **API Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent`
 - **Proxy Locale**: `gemini_proxy.php`
 - **Prompt**: Ottimizzati per ogni tipo di conversione
 
