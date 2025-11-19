@@ -1,4 +1,21 @@
-# Pull Request: Gemini API Direct Integration
+# ⚠️ SUPERATO - PR Precedente Sostituita
+
+**Attenzione**: Questo PR descrive un approccio intermedio che è stato successivamente sostituito.
+
+## ✅ Approccio Corrente (2025)
+
+L'applicazione ora utilizza **Cloudflare Worker** come proxy sicuro per tutte le chiamate AI.
+
+**Documentazione aggiornata**: [CLOUDFLARE_AI_CONFIG.md](./CLOUDFLARE_AI_CONFIG.md)
+
+**Evoluzione dell'architettura**:
+1. ~~v1.0: gemini_proxy.php (PHP server-side)~~ - Deprecato
+2. ~~v1.5: config.json (client-side diretto)~~ - Deprecato (questo PR)
+3. ✅ **v2.0: Cloudflare Worker (proxy sicuro)** - Attuale
+
+---
+
+# Pull Request: Gemini API Direct Integration (SUPERATO)
 
 ## 🎯 Objective
 

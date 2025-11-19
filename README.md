@@ -122,11 +122,26 @@ Il file data.json viene creato automaticamente al primo utilizzo.
 - ✅ I dati sono salvati sul server in data.json (non solo nel browser)
 - ✅ Le password sono hashate prima di essere salvate in data.json
 - ✅ Accesso multi-dispositivo abilitato tramite server
+- ✅ Chiavi API AI gestite in modo sicuro tramite Cloudflare Worker (non esposte nel client)
 - ⚠️ L'hash delle password usa una funzione semplice (non bcrypt/Argon2)
 - ⚠️ data.json è un file JSON in chiaro sul server
 - ⚠️ Non c'è crittografia dei dati sensibili
 - ⚠️ Assicurarsi che data.json non sia accessibile pubblicamente via web
 - ✅ Per produzione: implementare HTTPS, hash bcrypt, crittografia database
+
+## Configurazione AI
+
+L'applicazione utilizza AI per generare piani di allenamento e nutrizionali personalizzati.
+
+**Provider AI**: Cloudflare Worker (proxy sicuro)
+
+**Configurazione**: Vedere [CLOUDFLARE_AI_CONFIG.md](./CLOUDFLARE_AI_CONFIG.md) per:
+- Setup completo del Cloudflare Worker
+- Configurazione variabili d'ambiente
+- Troubleshooting errori comuni
+- Test della connessione AI
+
+**Nessuna configurazione client necessaria** - tutto è gestito centralmente in `config.js`.
 
 ## Testing
 
@@ -164,15 +179,18 @@ Per testare l'implementazione:
 
 - **index.html** - Applicazione principale utente (usa api.php per data.json)
 - **auth.js** - Modulo di autenticazione separato (login, registrazione, logout, BASE_USER)
+- **config.js** - Configurazione centralizzata del provider AI (Cloudflare Worker)
 - **pro.html** - Dashboard professionista (usa api.php per data.json)
 - **api.php** - API PHP per gestione data.json (lettura/scrittura/eliminazione)
 - **data.json** - File di storage dati sul server (creato automaticamente)
 - **test_api.html** - Test API (per verificare funzionamento api.php)
 - **test_auth.html** - Test modulo autenticazione (per verificare auth.js)
+- **test_gemini_direct.html** - Test connessione Cloudflare AI Worker
 - **test_auth_module.js** - Script Node.js per test automatici del modulo auth
 - **test_base_user.html** - Test interattivi per feature BASE_USER
 - **test_base_user_creation.js** - Test automatici per creazione BASE_USER
 - **BASE_USER_FEATURE.md** - Documentazione completa feature BASE_USER
+- **CLOUDFLARE_AI_CONFIG.md** - Guida configurazione AI con Cloudflare Worker
 
 ## Requisiti
 
