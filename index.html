@@ -4,32 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>LIFEGROWTH</title>
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#D4AF37">
+    <meta name="description" content="Monitora abitudini, allenamento, dieta e sonno. Sistema completo per gestire il tuo stile di vita.">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LIFEGROWTH">
+    <link rel="apple-touch-icon" href="https://placehold.co/192x192/D4AF37/000000?text=LG">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="manifest" href="#pwa-manifest">
-    <script id="pwa-manifest" type="application/json">
-        {
-          "name": "LIFEGROWTH PWA",
-          "short_name": "LIFEGROWTH",
-          "description": "Monitora abitudini, allenamento, dieta e sonno.",
-          "start_url": "./",
-          "display": "standalone",
-          "background_color": "#f3f4f6",
-          "theme_color": "#2563eb",
-          "icons": [
-            {
-              "src": "https://placehold.co/192x192/2563eb/ffffff?text=LD",
-              "sizes": "192x192",
-              "type": "image/png"
-            },
-            {
-              "src": "https://placehold.co/512x512/2563eb/ffffff?text=LD",
-              "sizes": "512x512",
-              "type": "image/png"
-            }
-          ]
-        }
-    </script>
 
     <style>
         /* Luxury Color Palette */
@@ -1869,23 +1852,37 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
       </button>`
     : '';
   
-  return `<div class="card mt-10">
-    <h2 class="text-2xl font-bold mb-6 text-center">LOGIN</h2>
-    <form onsubmit="event.preventDefault(); window.app.login(this.username.value, this.password.value);" class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium">NOME UTENTE</label>
-        <input type="text" name="username" required class="w-full p-3 border rounded-lg">
+  return `<div class="mb-6">
+    <div class="p-4 bg-white shadow-xl rounded-xl mb-6">
+      <div class="flex justify-between items-center">
+        <span class="text-xl font-bold text-[#D4AF37]">LIFEGROWTH</span>
+        <button onclick="window.app.installPWA()" class="px-4 py-2 bg-[#6A0DAD] text-white font-bold rounded-lg hover:bg-[#8B1BC4] flex items-center space-x-2 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+          </svg>
+          <span class="hidden sm:inline">SCARICA L'APP</span>
+          <span class="sm:hidden">SCARICA</span>
+        </button>
       </div>
-      <div>
-        <label class="block text-sm font-medium">PASSWORD</label>
-        <input type="password" name="password" required class="w-full p-3 border rounded-lg">
-      </div>
-      <button type="submit" class="w-full p-3 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#F4D03F]">ACCEDI</button>
-    </form>
-    ${installButton}
-    <p class="text-center mt-4 text-sm">NON HAI UN ACCOUNT?
-      <button onclick="window.app.setView('register')" class="text-[#D4AF37] font-semibold">REGISTRATI</button>
-    </p>
+    </div>
+    <div class="card">
+      <h2 class="text-2xl font-bold mb-6 text-center">LOGIN</h2>
+      <form onsubmit="event.preventDefault(); window.app.login(this.username.value, this.password.value);" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium">NOME UTENTE</label>
+          <input type="text" name="username" required class="w-full p-3 border rounded-lg">
+        </div>
+        <div>
+          <label class="block text-sm font-medium">PASSWORD</label>
+          <input type="password" name="password" required class="w-full p-3 border rounded-lg">
+        </div>
+        <button type="submit" class="w-full p-3 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#F4D03F]">ACCEDI</button>
+      </form>
+      ${installButton}
+      <p class="text-center mt-4 text-sm">NON HAI UN ACCOUNT?
+        <button onclick="window.app.setView('register')" class="text-[#D4AF37] font-semibold">REGISTRATI</button>
+      </p>
+    </div>
   </div>`;
 }
 
@@ -1899,30 +1896,44 @@ function renderRegister() {
       </button>`
     : '';
   
-  return `<div class="card mt-10">
-    <h2 class="text-2xl font-bold mb-6 text-center">REGISTRAZIONE</h2>
-    <form onsubmit="event.preventDefault(); window.app.register(this.username.value, this.password.value, this.userType.value);" class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium">NUOVO NOME UTENTE</label>
-        <input type="text" name="username" required class="w-full p-3 border rounded-lg">
+  return `<div class="mb-6">
+    <div class="p-4 bg-white shadow-xl rounded-xl mb-6">
+      <div class="flex justify-between items-center">
+        <span class="text-xl font-bold text-[#D4AF37]">LIFEGROWTH</span>
+        <button onclick="window.app.installPWA()" class="px-4 py-2 bg-[#6A0DAD] text-white font-bold rounded-lg hover:bg-[#8B1BC4] flex items-center space-x-2 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+          </svg>
+          <span class="hidden sm:inline">SCARICA L'APP</span>
+          <span class="sm:hidden">SCARICA</span>
+        </button>
       </div>
-      <div>
-        <label class="block text-sm font-medium">NUOVA PASSWORD</label>
-        <input type="password" name="password" required class="w-full p-3 border rounded-lg">
-      </div>
-      <div>
-        <label class="block text-sm font-medium">TIPO UTENTE</label>
-        <select name="userType" class="w-full p-3 border rounded-lg">
-          <option value="user">Utente</option>
-          <option value="pro">Professionista della salute</option>
-        </select>
-      </div>
-      <button type="submit" class="w-full p-3 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#F4D03F]">REGISTRATI</button>
-    </form>
-    ${installButton}
-    <p class="text-center mt-4 text-sm">HAI GIÀ UN ACCOUNT?
-      <button onclick="window.app.setView('login')" class="text-[#D4AF37] font-semibold">ACCEDI</button>
-    </p>
+    </div>
+    <div class="card">
+      <h2 class="text-2xl font-bold mb-6 text-center">REGISTRAZIONE</h2>
+      <form onsubmit="event.preventDefault(); window.app.register(this.username.value, this.password.value, this.userType.value);" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium">NUOVO NOME UTENTE</label>
+          <input type="text" name="username" required class="w-full p-3 border rounded-lg">
+        </div>
+        <div>
+          <label class="block text-sm font-medium">NUOVA PASSWORD</label>
+          <input type="password" name="password" required class="w-full p-3 border rounded-lg">
+        </div>
+        <div>
+          <label class="block text-sm font-medium">TIPO UTENTE</label>
+          <select name="userType" class="w-full p-3 border rounded-lg">
+            <option value="user">Utente</option>
+            <option value="pro">Professionista della salute</option>
+          </select>
+        </div>
+        <button type="submit" class="w-full p-3 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#F4D03F]">REGISTRATI</button>
+      </form>
+      ${installButton}
+      <p class="text-center mt-4 text-sm">HAI GIÀ UN ACCOUNT?
+        <button onclick="window.app.setView('login')" class="text-[#D4AF37] font-semibold">ACCEDI</button>
+      </p>
+    </div>
   </div>`;
 }
 
@@ -2528,6 +2539,19 @@ function renderRegister() {
         state.deferredPrompt = e;
         render();
       });
+
+      // Register Service Worker for PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./service-worker.js')
+            .then((registration) => {
+              console.log('Service Worker registered successfully:', registration.scope);
+            })
+            .catch((error) => {
+              console.log('Service Worker registration failed:', error);
+            });
+        });
+      }
 
     </script>
 </body>
