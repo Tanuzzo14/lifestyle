@@ -192,31 +192,7 @@ Convert any workout plan format (text, CSV, table, etc.) to this JSON format. Al
 Here is the workout plan to convert:
 ${textContent}`;
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt
-              }
-            ]
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.error || `Gemini API error: ${response.status}`;
-      throw new Error(errorMessage);
-    }
-
-    const data = await response.json();
+    const data = await callGemini(prompt);
     const content = data.candidates[0].content.parts[0].text;
     
     // Extract JSON from response (might be wrapped in markdown code blocks)
@@ -254,31 +230,7 @@ Convert any diet plan format (text, CSV, table, etc.) to this JSON format. All t
 Here is the diet plan to convert:
 ${textContent}`;
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt
-              }
-            ]
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.error || `Gemini API error: ${response.status}`;
-      throw new Error(errorMessage);
-    }
-
-    const data = await response.json();
+    const data = await callGemini(prompt);
     const content = data.candidates[0].content.parts[0].text;
     
     // Extract JSON from response (might be wrapped in markdown code blocks)
@@ -2258,31 +2210,7 @@ Important rules:
 Here is the content from file "${filename}":
 ${textContent.substring(0, 15000)}`;
 
-      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt
-                }
-              ]
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `Gemini API error: ${response.status}`;
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
+      const data = await callGemini(prompt);
       const content = data.candidates[0].content.parts[0].text;
       
       // Extract JSON from response (might be wrapped in markdown code blocks)
@@ -2524,31 +2452,7 @@ REGOLE FONDAMENTALI:
 - Considerare limitazioni fisiche indicate
 - Variare stimoli per adattamento neuromuscolare`;
 
-      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt
-                }
-              ]
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `Gemini API error: ${response.status}`;
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
+      const data = await callGemini(prompt);
       const content = data.candidates[0].content.parts[0].text;
       
       // Extract JSON from response with proper null safety
@@ -2673,31 +2577,7 @@ Rispondi SOLO con un array JSON in questo formato esatto:
 
 Tutti i testi devono essere in UPPERCASE. Genera un piano completo per tutti i 7 giorni della settimana.`;
 
-      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt
-                }
-              ]
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `Gemini API error: ${response.status}`;
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
+      const data = await callGemini(prompt);
       const content = data.candidates[0].content.parts[0].text;
       
       // Extract JSON from response with proper null safety
