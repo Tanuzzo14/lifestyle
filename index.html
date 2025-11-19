@@ -6,7 +6,7 @@
     <title>LIFEGROWTH</title>
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#D4AF37">
-    <meta name="description" content="Monitora abitudini, allenamento, dieta e sonno. Sistema completo per gestire il tuo stile di vita.">
+    <meta name="description" content="Monitora obiettivi giornalieri, allenamento, dieta e sonno. Sistema completo per gestire il tuo stile di vita.">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="LIFEGROWTH">
@@ -1693,7 +1693,7 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
 
       function renderNavbar() {
         if (!state.isAuthenticated) return '';
-        const views = { summary: 'RIEPILOGO', habits: 'ABITUDINI', workout: 'ALLENAMENTO', diet: 'DIETA', measurements: 'MISURE' };
+        const views = { summary: 'RIEPILOGO', habits: 'OBIETTIVI GIORNALIERI', workout: 'ALLENAMENTO', diet: 'DIETA', measurements: 'MISURE' };
         const navLinks = Object.keys(views).map(viewKey => `<button onclick="window.app.setView('${viewKey}')" class="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg transition ${state.view === viewKey ? 'bg-[#D4AF37] text-black shadow-md' : 'text-gray-600 hover:bg-gray-100'}">${views[viewKey]}</button>`).join('');
         return `<nav class="p-4 bg-white shadow-xl rounded-xl mb-6"><div class="flex justify-between items-center"><span class="text-xl font-bold text-[#D4AF37]">LIFEGROWTH</span><button onclick="window.app.toggleMenu()" class="md:hidden p-2 rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none">${state.isMenuOpen ? '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>' : '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>'}</button><div class="hidden md:flex items-center space-x-2">${navLinks}<button onclick="window.app.openChangePasswordModal()" class="px-3 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition">CAMBIA PASSWORD</button><button onclick="window.app.logout()" class="px-3 py-2 text-sm font-semibold text-red-600 hover:text-red-800 transition">LOGOUT</button></div></div><div id="mobile-menu" class="${state.isMenuOpen ? 'block' : 'hidden'} md:hidden mt-4 pt-4 border-t space-y-2">${navLinks}<button onclick="window.app.openChangePasswordModal()" class="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg text-gray-600 hover:bg-gray-50 transition">CAMBIA PASSWORD</button><button onclick="window.app.logout()" class="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg text-red-600 hover:bg-red-50 transition">LOGOUT</button></div></nav>`;
       }
@@ -1840,11 +1840,11 @@ function renderRegister() {
           </li>`
         ).join('');
       
-        return `<h3 class="text-xl font-bold mb-4">IMPOSTA LE TUE ABITUDINI</h3>
-        <p class="text-sm text-gray-600 mb-4 no-uppercase">Aggiungi le buone abitudini che vuoi monitorare ogni giorno (es. 'LEGGERE 10 PAGINE', 'MEDITARE 5 MINUTI').</p>
+        return `<h3 class="text-xl font-bold mb-4">IMPOSTA LE TUE OBIETTIVI GIORNALIERI</h3>
+        <p class="text-sm text-gray-600 mb-4 no-uppercase">Aggiungi le buone obiettivi giornalieri che vuoi monitorare ogni giorno (es. 'LEGGERE 10 PAGINE', 'MEDITARE 5 MINUTI').</p>
         
         <div class="card mb-4 bg-gray-50">
-            <h4 class="font-bold mb-2">ABITUDINI AGGIUNTE:</h4>
+            <h4 class="font-bold mb-2">OBIETTIVI GIORNALIERI AGGIUNTE:</h4>
             <ul>${habitsListHTML || `<p class="text-gray-500 text-sm">Nessuna abitudine ancora.</p>`}</ul>
         </div>
         
@@ -1937,7 +1937,7 @@ function renderRegister() {
             ? '<span class="text-green-600 font-bold">COMPLETATA</span>' 
             : '<span class="text-orange-500 font-bold">IN CORSO</span>';
         
-        return `<div class="card"><h2 class="text-2xl font-bold mb-4 text-[#800020]">ABITUDINI (${state.data.habits.length})</h2><div class="mb-6"><h4 class="text-lg font-semibold text-gray-700">STATO GIORNALIERO: ${overallCompliance}</h4></div><div class="card mb-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">CHECKLIST</h3><ul>${habitsListHTML || `<p class="text-gray-500 p-2">Aggiungi le tue abitudini per iniziare il monitoraggio.</p>`}</ul></div><h3 class="text-xl font-bold mb-4">AGGIUNGI NUOVA ABITUDINE</h3><form onsubmit="event.preventDefault(); window.app.addHabit(this.description.value); this.reset();" class="space-y-4"><input type="text" name="description" required class="w-full p-3 border rounded-lg" placeholder="ES. SCRIVERE UN DIARIO"><button type="submit" class="w-full p-3 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#F4D03F]">AGGIUNGI</button></form></div>`;
+        return `<div class="card"><h2 class="text-2xl font-bold mb-4 text-[#800020]">OBIETTIVI GIORNALIERI (${state.data.habits.length})</h2><div class="mb-6"><h4 class="text-lg font-semibold text-gray-700">STATO GIORNALIERO: ${overallCompliance}</h4></div><div class="card mb-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">CHECKLIST</h3><ul>${habitsListHTML || `<p class="text-gray-500 p-2">Aggiungi le tue obiettivi giornalieri per iniziare il monitoraggio.</p>`}</ul></div><h3 class="text-xl font-bold mb-4">AGGIUNGI NUOVA ABITUDINE</h3><form onsubmit="event.preventDefault(); window.app.addHabit(this.description.value); this.reset();" class="space-y-4"><input type="text" name="description" required class="w-full p-3 border rounded-lg" placeholder="ES. SCRIVERE UN DIARIO"><button type="submit" class="w-full p-3 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#F4D03F]">AGGIUNGI</button></form></div>`;
       }
 
       function renderWorkoutDashboard() {
@@ -2297,7 +2297,7 @@ function renderRegister() {
 
             <h4 class="text-lg font-bold text-gray-700 mb-2 mt-4">COMPLIANCE DAILY CHECKLIST</h4>
             <div class="card mb-6 bg-gray-50 p-4 space-y-3">
-                <div class="flex justify-between items-center"><span class="font-semibold text-gray-800">ABITUDINI (${state.data.habits.length})</span>${icon(complianceToday.habits)}</div>
+                <div class="flex justify-between items-center"><span class="font-semibold text-gray-800">OBIETTIVI GIORNALIERI (${state.data.habits.length})</span>${icon(complianceToday.habits)}</div>
                 <div class="flex justify-between items-center"><span class="font-semibold text-gray-800">ALLENAMENTO</span>${icon(complianceToday.workout)}</div>
                 <div class="flex justify-between items-center"><span class="font-semibold text-gray-800">DIETA</span>${icon(complianceToday.diet)}</div>
                 <div class="flex justify-between items-center"><span class="font-semibold text-gray-800">SONNO</span>${icon(complianceToday.sleep)}</div>
