@@ -1,4 +1,6 @@
 {
-  "GEMINI_API_KEY": "--",
-  "GEMINI_API_URL": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+  "NOTE": "Questo file non è più necessario. La configurazione AI è ora gestita centralmente in config.js che usa Cloudflare Worker.",
+  "CLOUDFLARE_WORKER_URL": "https://lifestyle-be.gaetanosmario.workers.dev/",
+  "PROVIDER": "cloudflare",
+  "DESCRIPTION": "Tutte le chiamate AI passano attraverso Cloudflare Worker per sicurezza. Non servono chiavi API nel client."
 }
