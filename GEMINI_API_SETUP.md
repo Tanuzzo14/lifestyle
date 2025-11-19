@@ -1,6 +1,26 @@
-# Gemini API Setup Guide
+# ⚠️ DEPRECATO - Questo documento è obsoleto
+
+**Attenzione**: Questa guida descrive un approccio deprecato che NON è più utilizzato.
+
+## ✅ Configurazione Corrente
+
+L'applicazione ora utilizza **Cloudflare Worker** per tutte le chiamate AI. 
+
+**Leggi la nuova documentazione**: [CLOUDFLARE_AI_CONFIG.md](./CLOUDFLARE_AI_CONFIG.md)
+
+**Cambiamenti principali**:
+- ❌ Non serve più `config.json`
+- ❌ Non serve più `GEMINI_API_KEY` nel client
+- ✅ Tutto è gestito da `config.js` con Cloudflare Worker
+- ✅ Chiavi API sicure solo lato server
+
+---
+
+# Gemini API Setup Guide (DEPRECATO)
 
 ## Overview
+
+⚠️ **QUESTO APPROCCIO È DEPRECATO** - Vedere sopra per la configurazione corrente.
 
 This application now uses **direct client-side calls** to the Google Gemini API. The API configuration is stored in `config.json`.
 
