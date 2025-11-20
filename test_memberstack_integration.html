@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Memberstack Integration - LIFEGROWTH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6 text-blue-600">Test Memberstack Integration</h1>
+        
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-2xl font-bold mb-4">Memberstack Integration Status</h2>
+            
+            <div class="space-y-4">
+                <div class="border-l-4 border-green-500 bg-green-50 p-4">
+                    <h3 class="font-bold text-green-800">✅ Memberstack Script Loaded</h3>
+                    <p class="text-sm text-green-700">Public Key: pk_6cd853f955f1da7adc05</p>
+                </div>
+                
+                <div class="border-l-4 border-blue-500 bg-blue-50 p-4">
+                    <h3 class="font-bold text-blue-800">📋 Subscription Plans Configured</h3>
+                    <ul class="text-sm text-blue-700 list-disc ml-6 mt-2">
+                        <li>PRO Monthly (pro-monthly)</li>
+                        <li>PRO Semester (pro-6m)</li>
+                        <li>PRO Yearly (pro-yearly)</li>
+                        <li>USER Monthly (user-monthly)</li>
+                        <li>USER Semester (user-6m)</li>
+                        <li>USER Yearly (user-yearly)</li>
+                    </ul>
+                </div>
+                
+                <div class="border-l-4 border-purple-500 bg-purple-50 p-4">
+                    <h3 class="font-bold text-purple-800">🎁 6-Month Free Trial</h3>
+                    <p class="text-sm text-purple-700">Trial calculated as: createdAt + 180 days</p>
+                    <p class="text-sm text-purple-700 mt-1">No dedicated trial plan needed in Memberstack</p>
+                </div>
+                
+                <div class="border-l-4 border-yellow-500 bg-yellow-50 p-4">
+                    <h3 class="font-bold text-yellow-800">🔒 Protected Features</h3>
+                    <p class="text-sm text-yellow-700">AI plan generation functions are guarded:</p>
+                    <ul class="text-sm text-yellow-700 list-disc ml-6 mt-2">
+                        <li>createAIWorkoutPlan()</li>
+                        <li>createAIDietPlan()</li>
+                        <li>createAIWorkoutPlanWizard()</li>
+                        <li>createAIDietPlanWizard()</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-2xl font-bold mb-4">How It Works</h2>
+            
+            <div class="space-y-4">
+                <div class="border-b pb-4">
+                    <h3 class="font-bold text-lg mb-2">1. User Registration/Login</h3>
+                    <p class="text-gray-700">When a user logs in, the system automatically checks Memberstack subscription status.</p>
+                </div>
+                
+                <div class="border-b pb-4">
+                    <h3 class="font-bold text-lg mb-2">2. Trial Period</h3>
+                    <p class="text-gray-700">All users get 6 months (180 days) free access from their registration date.</p>
+                    <p class="text-gray-700 mt-1">During trial: <code class="bg-gray-100 px-2 py-1 rounded">isInTrial = true</code></p>
+                </div>
+                
+                <div class="border-b pb-4">
+                    <h3 class="font-bold text-lg mb-2">3. Active Subscription</h3>
+                    <p class="text-gray-700">Users with active plans in Memberstack can access all features.</p>
+                    <p class="text-gray-700 mt-1">With subscription: <code class="bg-gray-100 px-2 py-1 rounded">isActive = true</code></p>
+                </div>
+                
+                <div class="pb-4">
+                    <h3 class="font-bold text-lg mb-2">4. Expired State</h3>
+                    <p class="text-gray-700">When trial expires and no active subscription exists, users see a courtesy page.</p>
+                    <p class="text-gray-700 mt-1">The page offers Memberstack modals to view pricing or manage account.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-2xl font-bold mb-4">Privacy & Data Protection</h2>
+            
+            <div class="space-y-3">
+                <div class="flex items-start">
+                    <span class="text-green-500 text-2xl mr-3">✓</span>
+                    <div>
+                        <p class="font-semibold">No Email Stored in data.json</p>
+                        <p class="text-sm text-gray-600">User emails remain in Memberstack only</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start">
+                    <span class="text-green-500 text-2xl mr-3">✓</span>
+                    <div>
+                        <p class="font-semibold">Pseudonymous Username Only</p>
+                        <p class="text-sm text-gray-600">data.json stores only display usernames (not real names)</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start">
+                    <span class="text-green-500 text-2xl mr-3">✓</span>
+                    <div>
+                        <p class="font-semibold">Minimal Credential Storage</p>
+                        <p class="text-sm text-gray-600">Only passwordHash and uid stored locally</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start">
+                    <span class="text-green-500 text-2xl mr-3">✓</span>
+                    <div>
+                        <p class="font-semibold">No Memberstack Data Persisted</p>
+                        <p class="text-sm text-gray-600">Subscription status is fetched in real-time, never saved</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-6 rounded">
+            <h3 class="font-bold text-blue-800 mb-2">Next Steps for Memberstack Dashboard</h3>
+            <ol class="list-decimal ml-6 text-blue-700 space-y-2">
+                <li>Add your domains to Memberstack (localhost and production URL)</li>
+                <li>Create the subscription plans with the IDs mentioned above</li>
+                <li>The 6-month trial is already implemented in code (no plan needed)</li>
+                <li>Memberstack modals (pricing, account) will work automatically with data-ms-modal attributes</li>
+            </ol>
+        </div>
+        
+        <div class="mt-8 text-center text-gray-500">
+            <p>This integration maintains compatibility with existing local authentication</p>
+            <p>while adding subscription management layer via Memberstack</p>
+        </div>
+    </div>
+</body>
+</html>

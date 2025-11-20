@@ -225,8 +225,112 @@
 
     <script src="config.js"></script>
     <script type="module">
+      // ---------- Import Memberstack DOM ----------
+      import memberstackDOM from 'https://unpkg.com/@memberstack/dom/dist/memberstack.js';
+
+      const memberstack = memberstackDOM.init({
+        publicKey: 'pk_6cd853f955f1da7adc05',
+      });
+
       // ---------- Import Authentication Module ----------
       import { Auth } from './auth.js';
+      
+      // ---------- Memberstack Subscription Management ----------
+      // Subscription plan constants
+      const SUBSCRIPTION_PLANS = {
+        FREE_TRIAL_6M: 'free-trial-6m',
+        PRO_MONTHLY: 'pro-monthly',
+        PRO_SEMESTER: 'pro-6m',
+        PRO_YEARLY: 'pro-yearly',
+        USER_MONTHLY: 'user-monthly',
+        USER_SEMESTER: 'user-6m',
+        USER_YEARLY: 'user-yearly',
+      };
+
+      // Free trial duration in days
+      const FREE_TRIAL_DAYS = 180;
+
+      // Subscription state
+      let subscription = {
+        isLoggedWithMemberstack: false,
+        isActive: false,
+        isInTrial: false,
+        currentPlans: [],
+        trialEndsAt: null,
+      };
+
+      // Fetch Memberstack subscription status
+      async function fetchMemberstackStatus() {
+        try {
+          const ms = await memberstack;
+          const member = await ms.getCurrentMember();
+
+          if (!member) {
+            // Reset subscription if no member
+            subscription = {
+              isLoggedWithMemberstack: false,
+              isActive: false,
+              isInTrial: false,
+              currentPlans: [],
+              trialEndsAt: null,
+            };
+            return;
+          }
+
+          const info = await member.getInfo();
+          const plans = await member.getPlans();
+
+          // Calculate trial period (createdAt + 180 days)
+          const createdAt = new Date(info.createdAt);
+          const trialEndsAt = new Date(createdAt);
+          trialEndsAt.setDate(trialEndsAt.getDate() + FREE_TRIAL_DAYS);
+
+          const isInTrial = new Date() <= trialEndsAt;
+          const activePlans = plans.filter(p => p.status === "active");
+
+          subscription = {
+            isLoggedWithMemberstack: true,
+            isActive: activePlans.length > 0,
+            isInTrial,
+            currentPlans: activePlans.map(p => p.id),
+            trialEndsAt: trialEndsAt.toISOString()
+          };
+
+          console.log('Memberstack status updated:', subscription);
+        } catch (error) {
+          console.error('Error fetching Memberstack status:', error);
+          // Keep existing subscription state on error
+        }
+      }
+
+      // Check if user can use the app (has active subscription or in trial)
+      function userCanUseApp() {
+        return subscription.isActive || subscription.isInTrial;
+      }
+
+      // Render courtesy page for expired subscriptions
+      function renderCourtesyPage() {
+        document.getElementById("app").innerHTML = `
+          <div class="card mt-10 text-center">
+            <h1 class="text-2xl font-bold mb-4 text-[#800020]">ABBONAMENTO SCADUTO</h1>
+            <p class="text-sm text-gray-700 mb-4 no-uppercase">Il periodo gratuito è terminato e non hai un abbonamento attivo.</p>
+            <p class="text-sm text-gray-700 mb-6 no-uppercase">Per continuare a utilizzare tutte le funzionalità di LIFEGROWTH, scegli un piano di abbonamento.</p>
+            <button data-ms-modal="pricing" class="w-full p-3 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#F4D03F] mb-3">VEDI I PIANI</button>
+            <button data-ms-modal="account" class="w-full p-3 bg-[#800020] text-white font-bold rounded-lg hover:bg-[#9a1f3a]">GESTISCI ACCOUNT</button>
+          </div>`;
+      }
+
+      // Guard feature wrapper to block premium features
+      function guardFeature(fn) {
+        return async (...args) => {
+          if (!userCanUseApp()) {
+            renderCourtesyPage();
+            displayError("ABBONAMENTO SCADUTO - RINNOVA PER CONTINUARE");
+            return;
+          }
+          return await fn(...args);
+        };
+      }
       
       // ---------- API Persistence with data.json ----------
       // Uses PHP API (api.php) for server-side storage with data.json
@@ -916,6 +1020,9 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
           state.userType = user.userType || 'user';
           state.isAuthenticated = true;
 
+          // Fetch Memberstack subscription status
+          await fetchMemberstackStatus();
+
           await loadUserData();
 
           if (state.userType === "pro") {
@@ -958,6 +1065,9 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
             state.userType = user.userType;
             state.isAuthenticated = true;
             
+            // Fetch Memberstack subscription status
+            await fetchMemberstackStatus();
+            
             await loadUserData();
             
             if (state.userType === "pro") {
@@ -979,6 +1089,9 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
             state.uid = result.uid;
             state.userType = result.userType;
             state.isAuthenticated = true;
+            
+            // Fetch Memberstack subscription status
+            await fetchMemberstackStatus();
             
             await loadUserData();
             
@@ -1623,21 +1736,13 @@ Tutti i testi devono essere in UPPERCASE. Genera un piano completo per 7 giorni 
         },
 
         // AI Plan Generation Methods
-        createAIWorkoutPlan: function() {
-          generateAIWorkoutPlan();
-        },
+        createAIWorkoutPlan: guardFeature(generateAIWorkoutPlan),
 
-        createAIDietPlan: function() {
-          generateAIDietPlan();
-        },
+        createAIDietPlan: guardFeature(generateAIDietPlan),
           // AI Plan Generation Methods
-      createAIWorkoutPlanWizard: function() {
-          generateAIWorkoutPlanWizard();
-      },
+      createAIWorkoutPlanWizard: guardFeature(generateAIWorkoutPlanWizard),
 
-      createAIDietPlanWizard: function() {
-          generateAIDietPlanWizard();
-      }
+      createAIDietPlanWizard: guardFeature(generateAIDietPlanWizard)
 
       }; // end window.app
 
@@ -2272,9 +2377,43 @@ function renderRegister() {
             // Stato 3: Nessun sonno registrato
             sleepBlockHTML = `<div class="card mt-4 p-3 bg-gray-50"><p class="text-gray-500">Nessun dato sonno per oggi. Avvia il timer sonno.</p><button onclick="window.app.handleSleepToggle()" class="w-full p-2 bg-[#6A0DAD] text-white font-bold rounded-lg hover:bg-[#8B1BC4] mt-2">AVVIA SONNO</button></div>`;
         }
+
+        // Memberstack Subscription Status Display
+        let subscriptionStatusHTML = '';
+        if (subscription.isLoggedWithMemberstack) {
+          let statusMessage = '';
+          let statusColor = '';
+          let buttonHTML = '';
+          
+          if (subscription.isActive) {
+            statusMessage = 'ABBONAMENTO ATTIVO';
+            statusColor = 'text-green-600';
+            buttonHTML = `<button data-ms-modal="account" class="w-full p-2 bg-[#800020] text-white font-bold rounded-lg hover:bg-[#9a1f3a] mt-2 text-sm">GESTISCI ABBONAMENTO</button>`;
+          } else if (subscription.isInTrial) {
+            const trialEnd = new Date(subscription.trialEndsAt);
+            const daysLeft = Math.ceil((trialEnd - new Date()) / (1000 * 60 * 60 * 24));
+            statusMessage = `PROVA GRATUITA (${daysLeft} GIORNI RIMANENTI)`;
+            statusColor = 'text-[#D4AF37]';
+            buttonHTML = `<button data-ms-modal="pricing" class="w-full p-2 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#F4D03F] mt-2 text-sm">VEDI I PIANI</button>`;
+          } else {
+            statusMessage = 'PROVA SCADUTA - ABBONAMENTO NECESSARIO';
+            statusColor = 'text-red-600';
+            buttonHTML = `<button data-ms-modal="pricing" class="w-full p-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 mt-2 text-sm">ATTIVA ABBONAMENTO</button>`;
+          }
+          
+          subscriptionStatusHTML = `
+            <div class="card p-3 bg-gradient-to-r from-[#ffe6ec] to-[#ffd9e3] border-2 border-[#800020] mb-4">
+              <h4 class="text-sm font-semibold text-gray-700 mb-1">STATO ABBONAMENTO:</h4>
+              <span class="text-lg font-bold ${statusColor}">${statusMessage}</span>
+              ${buttonHTML}
+            </div>`;
+        }
             
         return `<div class="p-4 bg-white shadow-xl rounded-xl mb-6">
             <h3 class="text-xl font-bold mb-4 text-blue-600">BENVENUTO, ${state.username}!</h3>
+            
+            ${subscriptionStatusHTML}
+            
             <div class="grid grid-cols-2 gap-4 mb-4">
                 
                 <div class="card p-3 bg-gray-50">
