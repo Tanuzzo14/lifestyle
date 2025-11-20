@@ -1840,17 +1840,17 @@ function renderRegister() {
           </li>`
         ).join('');
       
-        return `<h3 class="text-xl font-bold mb-4">IMPOSTA LE TUE OBIETTIVI GIORNALIERI</h3>
-        <p class="text-sm text-gray-600 mb-4 no-uppercase">Aggiungi le buone obiettivi giornalieri che vuoi monitorare ogni giorno (es. 'LEGGERE 10 PAGINE', 'MEDITARE 5 MINUTI').</p>
+        return `<h3 class="text-xl font-bold mb-4">IMPOSTA I TUOI OBIETTIVI GIORNALIERI</h3>
+        <p class="text-sm text-gray-600 mb-4 no-uppercase">Aggiungi gli obiettivi giornalieri che vuoi monitorare ogni giorno (es. 'LEGGERE 10 PAGINE', 'MEDITARE 5 MINUTI').</p>
         
         <div class="card mb-4 bg-gray-50">
-            <h4 class="font-bold mb-2">OBIETTIVI GIORNALIERI AGGIUNTE:</h4>
-            <ul>${habitsListHTML || `<p class="text-gray-500 text-sm">Nessuna abitudine ancora.</p>`}</ul>
+            <h4 class="font-bold mb-2">OBIETTIVI GIORNALIERI AGGIUNTI:</h4>
+            <ul>${habitsListHTML || `<p class="text-gray-500 text-sm">Nessun obiettivo giornaliero ancora.</p>`}</ul>
         </div>
         
         <form onsubmit="event.preventDefault(); window.app.addHabit(this.description.value); this.reset();" class="space-y-4">
           <input type="text" name="description" required class="w-full p-3 border rounded-lg" placeholder="ES. BERE 2L D'ACQUA">
-          <button type="submit" class="w-full p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">AGGIUNGI ABITUDINE</button>
+          <button type="submit" class="w-full p-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">AGGIUNGI UN NUOVO OBIETTIVO</button>
         </form>
         
         <button type="button" onclick="window.app.nextWizardStep()" class="w-full p-3 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#F4D03F] mt-4">CONTINUA</button>
@@ -1937,7 +1937,7 @@ function renderRegister() {
             ? '<span class="text-green-600 font-bold">COMPLETATA</span>' 
             : '<span class="text-orange-500 font-bold">IN CORSO</span>';
         
-        return `<div class="card"><h2 class="text-2xl font-bold mb-4 text-[#800020]">OBIETTIVI GIORNALIERI (${state.data.habits.length})</h2><div class="mb-6"><h4 class="text-lg font-semibold text-gray-700">STATO GIORNALIERO: ${overallCompliance}</h4></div><div class="card mb-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">CHECKLIST</h3><ul>${habitsListHTML || `<p class="text-gray-500 p-2">Aggiungi le tue obiettivi giornalieri per iniziare il monitoraggio.</p>`}</ul></div><h3 class="text-xl font-bold mb-4">AGGIUNGI NUOVA ABITUDINE</h3><form onsubmit="event.preventDefault(); window.app.addHabit(this.description.value); this.reset();" class="space-y-4"><input type="text" name="description" required class="w-full p-3 border rounded-lg" placeholder="ES. SCRIVERE UN DIARIO"><button type="submit" class="w-full p-3 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#F4D03F]">AGGIUNGI</button></form></div>`;
+        return `<div class="card"><h2 class="text-2xl font-bold mb-4 text-[#800020]">OBIETTIVI GIORNALIERI (${state.data.habits.length})</h2><div class="mb-6"><h4 class="text-lg font-semibold text-gray-700">STATO GIORNALIERO: ${overallCompliance}</h4></div><div class="card mb-6 bg-gray-50"><h3 class="text-xl font-bold mb-4">CHECKLIST</h3><ul>${habitsListHTML || `<p class="text-gray-500 p-2">Aggiungi le tue obiettivi giornalieri per iniziare il monitoraggio.</p>`}</ul></div><h3 class="text-xl font-bold mb-4">AGGIUNGI UN NUOVO OBIETTIVO</h3><form onsubmit="event.preventDefault(); window.app.addHabit(this.description.value); this.reset();" class="space-y-4"><input type="text" name="description" required class="w-full p-3 border rounded-lg" placeholder="ES. SCRIVERE UN DIARIO"><button type="submit" class="w-full p-3 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#F4D03F]">AGGIUNGI</button></form></div>`;
       }
 
       function renderWorkoutDashboard() {

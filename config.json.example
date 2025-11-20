@@ -1,6 +1,0 @@
-{
-  "NOTE": "Questo file non è più necessario. La configurazione AI è ora gestita centralmente in config.js che usa Cloudflare Worker.",
-  "CLOUDFLARE_WORKER_URL": "https://lifestyle-be.gaetanosmario.workers.dev/",
-  "PROVIDER": "cloudflare",
-  "DESCRIPTION": "Tutte le chiamate AI passano attraverso Cloudflare Worker per sicurezza. Non servono chiavi API nel client."
-}
